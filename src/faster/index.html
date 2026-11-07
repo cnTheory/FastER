@@ -42,6 +42,24 @@
 
     <main class="max-w-xl mx-auto w-full px-4 py-6 flex-grow space-y-5">
 
+        <section class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-3">
+            <p class="text-xs text-slate-500">Hackathon demo · Synthetic patient data and estimated metrics.</p>
+            <form id="staff-login" class="space-y-2" onsubmit="loginStaff(event)">
+                <label for="hospital-select" class="block text-sm font-bold">Staff access</label>
+                <select id="hospital-select" class="w-full bg-slate-100 p-2 rounded-lg" required disabled>
+                    <option value="">Loading hospitals…</option>
+                </select>
+                <label for="staff-code" class="block text-xs">Demo staff code</label>
+                <input id="staff-code" type="password" autocomplete="current-password" required
+                    class="w-full border p-2 rounded-lg" placeholder="Enter staff code">
+                <button id="login-button" class="bg-emerald-600 text-white px-4 py-2 rounded-lg" disabled>Sign in</button>
+            </form>
+            <button id="logout-button" type="button" onclick="logoutStaff()" class="hidden text-sm underline">Sign out</button>
+            <p id="staff-message" role="status" class="text-sm text-slate-600">Sign in to browse demo patients, or open a patient tracking link.</p>
+        </section>
+
+        <p class="text-sm"><a href="/capacity/" class="text-emerald-700 underline">Hospital capacity and Databricks history dashboard</a></p>
+
         <!-- Patient selection -->
         <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex items-center justify-between">
             <div>
@@ -49,19 +67,16 @@
                     for="patient-select"
                     class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1"
                 >
-                    Demo Patient Profile
+                    Patient Profile
                 </label>
 
                 <select
                     id="patient-select"
                     onchange="fetchPatientData(this.value)"
+                    disabled
                     class="bg-slate-100 font-semibold text-sm text-slate-700 py-1.5 px-3 rounded-lg cursor-pointer focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
                 >
-                    <option value="PAT-001">Patient PAT-001</option>
-                    <option value="PAT-002">Patient PAT-002</option>
-                    <option value="PAT-003">Patient PAT-003</option>
-                    <option value="PAT-004">Patient PAT-004</option>
-                    <option value="PAT-005">Patient PAT-005</option>
+                    <option value="">Sign in to load patients</option>
                 </select>
             </div>
 
@@ -84,11 +99,11 @@
                         aria-live="polite"
                         class="text-2xl font-black text-slate-900 tracking-tight"
                     >
-                        Syncing Data...
+                        Select a Patient
                     </h1>
 
                     <p id="patient-id-badge" class="text-xs font-bold tracking-widest text-emerald-600 uppercase mt-0.5">
-                        ID: PAT-001
+                        No patient selected
                     </p>
                 </div>
 
@@ -99,12 +114,22 @@
             </div>
 
             <p id="current-text" class="text-sm text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">
-                Loading patient status...
+                Sign in above to select a patient.
             </p>
         </div>
 
+        <section id="staff-controls" class="hidden bg-white rounded-2xl p-4 border border-slate-200 space-y-2">
+            <label for="status-select" class="text-sm font-bold">Update care status</label>
+            <select id="status-select" class="w-full bg-slate-100 p-2 rounded-lg">
+                <option value="TRIAGE">Triage</option><option value="WITH_DOCTOR">With doctor</option>
+                <option value="BOARDING">Boarding</option><option value="ADMITTED">Admitted</option>
+                <option value="DISCHARGED">Discharged</option>
+            </select>
+            <button id="save-status" type="button" onclick="saveStatus()" disabled class="bg-emerald-600 text-white px-4 py-2 rounded-lg disabled:opacity-50">Save status</button>
+        </section>
+
         <!-- AI insights -->
-        <div class="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 rounded-2xl p-4 shadow-inner">
+        <div id="ai-section" class="hidden bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 rounded-2xl p-4 shadow-inner">
             <button
                 id="ai-toggle"
                 type="button"
@@ -154,7 +179,7 @@
                     <div id="step-dot-1" class="absolute -left-[31px] top-0.5 w-6 h-6 rounded-full border-4 border-white bg-slate-300 ring-4 ring-slate-100 z-10 flex items-center justify-center text-white text-[10px]" aria-hidden="true"></div>
                     <h3 class="font-extrabold text-base text-slate-900">1. Triage Intake</h3>
                     <p class="text-xs text-slate-500 mt-0.5">
-                        Yale ESI data cataloged. Vital checks completed by triage.
+                        Initial intake and vital checks recorded by triage.
                     </p>
                 </div>
 
@@ -208,10 +233,12 @@
     </footer>
 
     <script>
-        // Change this if your backend uses another address or port.
-        const API_BASE = "http://127.0.0.1:8000";
+        const API_BASE = "/api";
+        let staffToken = "";
+        let sessionRequestId = 0;
+        const linkedPatient = new URLSearchParams(window.location.search).get("patient_id");
 
-        let currentActivePatient = "PAT-001";
+        let currentActivePatient = "";
         let patientRequestId = 0;
         let aiRequestId = 0;
         let patientLoaded = false;
@@ -237,6 +264,7 @@
         }
 
         async function fetchPatientData(patientId) {
+            if (!patientId) return;
             const requestId = ++patientRequestId;
 
             // Invalidate any AI summary request for the previous data.
@@ -257,6 +285,7 @@
                 "Click Generate Insights to request a patient summary.";
 
             document.getElementById("ai-generate").disabled = true;
+            document.getElementById("save-status").disabled = true;
 
             const riskBadge = document.getElementById("risk-badge");
             const boardingWarn = document.getElementById("boarding-warn-icon");
@@ -292,7 +321,7 @@
                     typeof data.patient_id !== "string" ||
                     !Number.isInteger(step) ||
                     step < 1 ||
-                    step > 4
+                    step > 5
                 ) {
                     throw new Error("The server returned invalid patient data.");
                 }
@@ -312,11 +341,13 @@
                 riskBadge.classList.toggle("flex", highRisk);
                 boardingWarn.classList.toggle("hidden", !highRisk);
 
-                updateTrackerUI(step);
+                updateTrackerUI(step, data.current_status);
+                document.getElementById("status-select").value = data.current_status;
                 setConnectionStatus("connected");
 
                 patientLoaded = true;
-                document.getElementById("ai-generate").disabled = false;
+                document.getElementById("ai-generate").disabled = !staffToken;
+                document.getElementById("save-status").disabled = !staffToken;
             } catch (error) {
                 if (requestId !== patientRequestId) return;
 
@@ -333,7 +364,7 @@
         }
 
         async function loadAIAssessment() {
-            if (!patientLoaded) return;
+            if (!patientLoaded || !staffToken) return;
 
             const requestId = ++aiRequestId;
             const patientId = currentActivePatient;
@@ -345,7 +376,8 @@
 
             try {
                 const response = await fetch(
-                    `${API_BASE}/patient/${encodeURIComponent(patientId)}/ai-summary`
+                    `${API_BASE}/staff/patient/${encodeURIComponent(patientId)}/ai-summary`,
+                    {headers: {Authorization: `Bearer ${staffToken}`}}
                 );
 
                 if (!response.ok) {
@@ -374,12 +406,12 @@
                 display.textContent = `Unable to generate insights: ${error.message}`;
             } finally {
                 if (requestId === aiRequestId) {
-                    button.disabled = !patientLoaded;
+                    button.disabled = !patientLoaded || !staffToken;
                 }
             }
         }
 
-        function updateTrackerUI(activeStep) {
+        function updateTrackerUI(activeStep, status = "") {
             const dotBase =
                 "absolute -left-[31px] top-0.5 w-6 h-6 rounded-full " +
                 "border-4 border-white ring-4 z-10 flex items-center " +
@@ -389,9 +421,14 @@
                 const node = document.getElementById(`step-node-${i}`);
                 const dot = document.getElementById(`step-dot-${i}`);
 
+                node.classList.remove("hidden");
                 node.removeAttribute("aria-current");
                 dot.replaceChildren();
 
+                if (status === "DISCHARGED" && i >= 3) {
+                    node.className = "hidden";
+                    continue;
+                }
                 if (i < activeStep) {
                     node.className =
                         "relative transition-all duration-300 opacity-100";
@@ -436,13 +473,138 @@
             toggle.setAttribute("aria-expanded", String(!isHidden));
         }
 
-        function refreshData() {
-            fetchPatientData(
-                document.getElementById("patient-select").value
-            );
+        async function api(path, options = {}) {
+            const response = await fetch(`${API_BASE}${path}`, {
+                ...options,
+                headers: {"Content-Type": "application/json",
+                    ...(staffToken ? {Authorization: `Bearer ${staffToken}`} : {}),
+                    ...options.headers}
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : `Request failed (${response.status})`);
+            return data;
         }
 
-        window.addEventListener("DOMContentLoaded", refreshData);
+        async function loadDashboard() {
+            const session = sessionRequestId;
+            const data = await api("/staff/dashboard");
+            if (session !== sessionRequestId) return;
+            const select = document.getElementById("patient-select");
+            select.replaceChildren(new Option("Select a patient", ""));
+            for (const patient of data.in_department) {
+                select.appendChild(new Option(`${patient.id} · ESI ${patient.esi_level}`, patient.id));
+            }
+            select.disabled = false;
+            document.getElementById("staff-message").textContent =
+                `${data.hospital.name}: ${data.in_department.length} active patients, ${data.beds.available} beds available, ${data.beds.boarding} boarding.`;
+            const selected = data.in_department.some(p => p.id === currentActivePatient)
+                ? currentActivePatient : data.in_department[0]?.id;
+            if (selected) {
+                select.value = selected;
+                await fetchPatientData(selected);
+            } else {
+                clearPatient();
+                document.getElementById("current-text").textContent = "No active patients at this hospital.";
+            }
+        }
+
+        function clearPatient() {
+            patientRequestId++;
+            aiRequestId++;
+            patientLoaded = false;
+            currentActivePatient = "";
+            document.getElementById("current-label").textContent = "Select a Patient";
+            document.getElementById("current-text").textContent = "Sign in above or open a patient tracking link.";
+            document.getElementById("patient-id-badge").textContent = "No patient selected";
+            document.getElementById("risk-badge").classList.add("hidden");
+            document.getElementById("boarding-warn-icon").classList.add("hidden");
+            document.getElementById("ai-content").textContent = "Sign in to request staff insights.";
+            document.getElementById("ai-generate").disabled = true;
+            document.getElementById("save-status").disabled = true;
+            updateTrackerUI(0);
+        }
+
+        async function loginStaff(event) {
+            event.preventDefault();
+            const session = ++sessionRequestId;
+            const button = document.getElementById("login-button");
+            button.disabled = true;
+            try {
+                const data = await api("/staff/login", {method: "POST", body: JSON.stringify({
+                    hospital_id: document.getElementById("hospital-select").value,
+                    code: document.getElementById("staff-code").value
+                })});
+                if (session !== sessionRequestId) return;
+                staffToken = data.token;
+                document.getElementById("staff-code").value = "";
+                document.getElementById("staff-login").classList.add("hidden");
+                for (const id of ["logout-button", "staff-controls", "ai-section"]) document.getElementById(id).classList.remove("hidden");
+                await loadDashboard();
+            } catch (error) {
+                if (session === sessionRequestId) document.getElementById("staff-message").textContent = error.message;
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        async function logoutStaff() {
+            const token = staffToken;
+            staffToken = "";
+            sessionRequestId++;
+            clearPatient();
+            document.getElementById("staff-login").classList.remove("hidden");
+            for (const id of ["logout-button", "staff-controls", "ai-section"]) document.getElementById(id).classList.add("hidden");
+            const select = document.getElementById("patient-select");
+            select.replaceChildren(new Option("Sign in to load patients", ""));
+            select.disabled = true;
+            document.getElementById("staff-message").textContent = "Signed out.";
+            try { await api("/staff/logout", {method: "POST", headers: {Authorization: `Bearer ${token}`}}); } catch (_) {}
+        }
+
+        async function saveStatus() {
+            if (!patientLoaded || !staffToken) return;
+            const session = sessionRequestId;
+            const patient = currentActivePatient;
+            document.getElementById("save-status").disabled = true;
+            try {
+                await api("/staff/update-status", {method: "POST", body: JSON.stringify({
+                    patient_id: patient, new_status: document.getElementById("status-select").value
+                })});
+                if (session !== sessionRequestId || patient !== currentActivePatient) return;
+                await fetchPatientData(patient);
+                document.getElementById("staff-message").textContent = "Status saved. Refresh to reload the active patient list.";
+            } catch (error) {
+                if (session === sessionRequestId) document.getElementById("staff-message").textContent = error.message;
+            } finally {
+                document.getElementById("save-status").disabled = !patientLoaded || !staffToken;
+            }
+        }
+
+        async function refreshData() {
+            try {
+                if (staffToken) await loadDashboard();
+                else if (currentActivePatient || linkedPatient) await fetchPatientData(currentActivePatient || linkedPatient);
+            } catch (error) { document.getElementById("staff-message").textContent = error.message; }
+        }
+
+        window.addEventListener("DOMContentLoaded", async () => {
+            try {
+                const hospitals = await api("/hospitals");
+                const select = document.getElementById("hospital-select");
+                select.replaceChildren(...hospitals.map(h => new Option(`${h.name} (${h.city})`, h.id)));
+                select.disabled = false;
+                document.getElementById("login-button").disabled = hospitals.length === 0;
+                setConnectionStatus("connected");
+            } catch (error) {
+                setConnectionStatus("error");
+                document.getElementById("staff-message").textContent = `Unable to load hospitals: ${error.message}`;
+            }
+            if (linkedPatient) {
+                const select = document.getElementById("patient-select");
+                select.replaceChildren(new Option(linkedPatient, linkedPatient));
+                await fetchPatientData(linkedPatient);
+            }
+        });
     </script>
 </body>
 </html>
