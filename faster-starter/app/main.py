@@ -15,6 +15,8 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from scripts.generate_data import ROOT, generate
+from app.history import router as history_router
+from app.databricks import execute, quote_table
 
 MODE = os.getenv("DATA_MODE", "demo")
 LOCK = threading.Lock()
@@ -28,7 +30,8 @@ async def lifespan(app):
         raise RuntimeError("DATA_MODE must be demo or databricks")
     yield
 
-app = FastAPI(title="FastER synthetic demo", lifespan=lifespan)
+app = FastAPI(title="FastER capacity and history demo", lifespan=lifespan)
+app.include_router(history_router)
 
 def read_csv(name):
     with (ROOT / name).open(newline="") as f:
@@ -69,33 +72,9 @@ def demo_status():
 
 async def databricks_status():
     """Read a tiny aggregate table using the SQL Statement Execution REST API."""
-    host = os.getenv("DATABRICKS_HOST", "").rstrip("/")
-    token = os.getenv("DATABRICKS_TOKEN", "")
-    warehouse = os.getenv("DATABRICKS_WAREHOUSE_ID", "")
     table = os.getenv("DATABRICKS_GOLD_TABLE", "workspace.faster.gold_hospital_status")
-    if not (host.startswith("https://") and token and warehouse):
-        raise HTTPException(503, "Databricks connection settings are incomplete")
-    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*){2}", table):
-        raise HTTPException(503, "Use a three-part catalog.schema.table name")
-    statement = f"SELECT hospital_id,name,travel_minutes,capabilities,service_minutes,queue_count,active_clinicians,observed_at FROM {table} LIMIT 100"
-    headers = {"Authorization": f"Bearer {token}"}
-    try:
-        async with httpx.AsyncClient(timeout=40) as client:
-            response = await client.post(f"{host}/api/2.0/sql/statements", headers=headers,
-                json={"warehouse_id": warehouse, "statement": statement,
-                      "wait_timeout": "30s", "on_wait_timeout": "CANCEL",
-                      "disposition": "INLINE", "format": "JSON_ARRAY"})
-            response.raise_for_status()
-            payload = response.json()
-        if payload.get("status", {}).get("state") != "SUCCEEDED":
-            raise HTTPException(503, "Databricks query did not complete; check warehouse status")
-        if payload.get("manifest", {}).get("truncated"):
-            raise HTTPException(503, "Hospital query was truncated")
-        columns = [c["name"] for c in payload["manifest"]["schema"]["columns"]]
-        return [dict(zip(columns, row)) for row in payload.get("result", {}).get("data_array", [])]
-    except (httpx.HTTPError, KeyError, ValueError):
-        # Never return provider error bodies or credentials to the browser.
-        raise HTTPException(503, "Databricks unavailable; no synthetic fallback in connected mode")
+    statement = f"SELECT hospital_id,name,travel_minutes,capabilities,service_minutes,queue_count,active_clinicians,observed_at FROM {quote_table(table)} LIMIT 100"
+    return await execute(statement)
 
 def calculate(rows, capability):
     now = datetime.now(timezone.utc)

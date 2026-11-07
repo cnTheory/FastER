@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>FastER · Capacity demo</title>
+  <title>FastER · Capacity and history</title>
   <style>
     :root{font-family:Inter,ui-sans-serif,system-ui,sans-serif;color:#182d3d;background:#f3f6fa;line-height:1.5}
     *{box-sizing:border-box} body{margin:0} header{background:#102b3f;color:white;padding:24px max(22px,calc((100vw - 1120px)/2));display:flex;justify-content:space-between;align-items:center;gap:16px}
@@ -12,21 +12,23 @@
     .toolbar{display:flex;align-items:end;gap:14px;flex-wrap:wrap;margin:24px 0}label{font-size:13px;font-weight:650;display:block;margin-bottom:5px}select,input,button{font:inherit;border-radius:9px;padding:10px 13px}select,input{background:white;border:1px solid #c5d3dd;color:#182d3d}button{border:0;background:#087f70;color:white;cursor:pointer;font-weight:650}button:hover{filter:brightness(.94)}button:disabled{opacity:.5;cursor:wait}.secondary{background:white;border:1px solid #c5d3dd;color:#234457}
     .cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}.card{background:white;border:1px solid #dae3ea;border-radius:16px;padding:22px;position:relative}.card.best{border:2px solid #0a9b81;padding:21px}.tag{font-size:11px;letter-spacing:.6px;font-weight:750;text-transform:uppercase;color:#087f70;min-height:20px}.card h2{font-size:20px;margin:8px 0 16px}.time{font-size:44px;line-height:1.2;font-weight:800;letter-spacing:-1px}.unit{font-size:15px;color:#6a7e8c;letter-spacing:0;font-weight:500}.caption{font-size:12px;color:#6a7e8c;margin-top:3px}.metrics{margin-top:22px;border-top:1px solid #e6edf2;padding-top:10px}.row{display:flex;justify-content:space-between;gap:12px;padding:5px 0;font-size:13px}.row span{color:#6a7e8c}.capabilities{font-size:12px;color:#356170;background:#edf5f8;padding:7px 10px;border-radius:7px;margin-top:12px}.fresh{font-size:11px;color:#6a7e8c;margin-top:14px}.disabled{opacity:.72}
     .lower{display:grid;grid-template-columns:1.2fr 1fr;gap:18px;margin-top:22px}.panel{background:white;border:1px solid #dae3ea;border-radius:16px;padding:23px}.panel h2{font-size:18px;margin:5px 0 10px}.panel p{font-size:14px}.panel label{margin-top:12px}.panel input{width:90px}.panel button{margin-top:12px}.explanation{font-size:15px;color:#234457;min-height:80px}.status{font-size:12px;color:#587486;min-height:24px}.error{color:#a72f2f}.contract{margin-top:24px;font-size:13px;color:#587486}code{background:#e7eef3;padding:2px 5px;border-radius:4px}details{margin-top:24px;font-size:13px}pre{white-space:pre-wrap;word-break:break-word;background:#102b3f;color:#cbeced;padding:20px;border-radius:12px;max-height:360px;overflow:auto}footer{font-size:12px;color:#6a7e8c;margin:25px 0}
-    @media(max-width:780px){.cards,.lower{grid-template-columns:1fr}header{align-items:start}.time{font-size:36px}main{padding-top:22px}.hero p{font-size:14px}}
+    .history{margin-top:24px}.history input{width:min(210px,100%)}.history select{max-width:100%}.history-results{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.history-results ol{padding-left:20px;font-size:13px}.history-results li{margin:9px 0}.history-stats{display:flex;flex-wrap:wrap;gap:24px;margin:18px 0}.history-stats strong{font-size:25px;display:block}.history-stats span{font-size:12px;color:#587486}
+    @media(max-width:780px){.cards,.lower,.history-results{grid-template-columns:1fr}header{align-items:start}.time{font-size:36px}main{padding-top:22px}.hero p{font-size:14px}}
   </style>
 </head>
 <body>
 <header><div><div class="brand">Fast<span>ER</span></div><p>Hospital capacity, made visible.</p></div><span class="pill" id="mode">Connecting…</span></header>
 <main>
   <div class="hero"><div class="eyebrow">Hackathon prototype</div><h1>See how capacity changes<br>the comparison.</h1><p>A working connection between fictional visit records, staffing snapshots, and a patient-facing dashboard.</p></div>
-  <div class="notice"><strong>Synthetic demonstration only.</strong> Hospitals, travel times, and capacity are fictional. This tool does not assess medical urgency or recommend real care. In a medical emergency, call 911.</div>
+  <div class="notice"><strong>Synthetic demonstration only for capacity cards.</strong> Their hospitals, travel times, and staffing are fictional. The separate historical panel reads your Databricks source. This tool does not assess medical urgency or recommend real care. In a medical emergency, call 911.</div>
   <div class="toolbar"><div><label for="capability">Demo capability filter</label><select id="capability"><option value="general">General emergency services</option><option value="imaging">Imaging available</option><option value="pediatric">Pediatric capability</option></select></div><button id="refresh">Refresh comparison</button><span class="status" id="status" role="status" aria-live="polite"></span></div>
   <section class="cards" id="cards" aria-label="Hospital comparisons"></section>
   <div class="lower">
     <section class="panel"><div class="eyebrow">Explanation</div><h2>Why does the comparison change?</h2><p class="explanation" id="explanation">Load the comparison, then request an explanation grounded in these aggregate records.</p><button id="explain">Explain these results</button><div class="status" id="provider" aria-live="polite"></div></section>
     <section class="panel"><div class="eyebrow">Local simulation control</div><h2>Change the staffing snapshot</h2><p>Update fictional staffing and recalculate. Changes are local to demo mode; connected mode is read-only.</p><label for="hospital">Hospital</label><select id="hospital"><option value="H1">Demo Riverside</option><option value="H2">Demo Hillcrest</option><option value="H3">Demo Central</option></select><label for="clinicians">On-shift clinicians</label><input type="number" id="clinicians" min="0" max="10" value="1"><br><button id="change" class="secondary">Apply staffing change</button><div class="status" id="change-status" aria-live="polite"></div></section>
   </div>
-  <p class="contract">Same interface, two data sources: local CSV snapshots or a Databricks aggregate table. Model: queue × illustrative service interval ÷ on-shift clinicians, plus fixed demo travel time.</p>
+  <section class="panel history"><div class="eyebrow">Historical records · SPARCS 2024</div><h2>Explore hospital history</h2><p>Reads your Databricks frontend view through the backend. Results describe recorded inpatient discharges.</p><button id="load-history">Load hospitals from Databricks</button><div class="toolbar"><div><label for="history-hospital">Hospital</label><select id="history-hospital" disabled><option>Load hospitals first</option></select></div><div><label for="history-age">Age group (optional exact value)</label><input id="history-age" placeholder="Leave blank for all" maxlength="80"></div><div><label for="history-diagnosis">Diagnosis code (optional)</label><input id="history-diagnosis" placeholder="Leave blank for all" maxlength="80"></div><button id="show-history" disabled>Load summary</button></div><div class="status" id="history-status" role="status" aria-live="polite"></div><div id="history-results"></div></section>
+  <p class="contract">Capacity comparison source: local CSV snapshots or a Databricks operational table. Historical source: a separate Databricks discharge view.</p>
   <details><summary>Inspect the backend response</summary><pre id="json"></pre></details>
   <footer>Counts are aggregate. On-shift does not mean immediately free. This simplified queue model does not account for clinical triage, beds, nursing capacity, or treatment complexity. Estimates are suppressed after 15 minutes without a fresh source snapshot.</footer>
 </main>
@@ -39,6 +41,52 @@ async function refresh(){const id=++version;$('status').classList.remove('error'
 $('refresh').onclick=refresh;$('capability').onchange=refresh;
 $('change').onclick=async()=>{const value=Number($('clinicians').value);if(!Number.isInteger(value)||value<0||value>10){$('change-status').textContent='Enter an integer from 0 to 10.';return}$('change').disabled=true;try{await api('/api/demo/staff',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hospital_id:$('hospital').value,active_clinicians:value})});$('change-status').textContent='Local staffing changed.';await refresh()}catch(e){$('change-status').textContent=e.message}finally{$('change').disabled=false}};
 $('explain').onclick=async()=>{const id=version;$('explain').disabled=true;$('provider').textContent='Requesting explanation…';try{const d=await api('/api/explain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({capability:$('capability').value})});if(id!==version)return;$('explanation').textContent=d.text;$('provider').textContent='Source: '+d.provider+(d.notice?' · '+d.notice:'')}catch(e){$('provider').textContent=e.message}finally{$('explain').disabled=false}};
+let historyVersion=0;
+const historicalNumber=v=>v===null||v===undefined?'Unknown':new Intl.NumberFormat(undefined,{maximumFractionDigits:1}).format(v);
+async function showHistory(){const id=++historyVersion;$('history-status').textContent='Querying historical summaries…';$('history-results').replaceChildren();$('show-history').disabled=true;try{const q=new URLSearchParams();if($('history-age').value.trim())q.set('age_group',$('history-age').value.trim());if($('history-diagnosis').value.trim())q.set('diagnosis_code',$('history-diagnosis').value.trim());const d=await api('/api/history/hospitals/'+encodeURIComponent($('history-hospital').value)+'?'+q);if(id!==historyVersion)return;const s=d.summary;const group=(title,rows)=>`<div><h3>${esc(title)}</h3><ol>${rows.map(r=>`<li>${esc(r.description||'Unspecified category')} <small>(${esc(r.code??'unknown')})</small><br><strong>${esc(historicalNumber(r.discharge_count))}</strong> recorded discharges</li>`).join('')}</ol></div>`;$('history-results').innerHTML=`<h3>${esc(s.facility_name)}</h3><div class="history-stats"><div><strong>${esc(historicalNumber(s.discharge_count))}</strong><span>Matching discharges</span></div><div><strong>${esc(historicalNumber(s.median_inpatient_stay_days))} days</strong><span>Median inpatient stay</span></div><div><strong>${esc(historicalNumber(s.average_inpatient_stay_days))} days</strong><span>Average inpatient stay</span></div></div><p>Length-of-stay values available for ${esc(historicalNumber(s.length_of_stay_record_count))} matching records.</p><div class="history-results">${group('Diagnosis categories',d.diagnoses)}${group('Procedure categories',d.procedures)}${group('Severity categories',d.severity)}</div><p>${esc(d.note)}</p>`;$('history-status').textContent='Historical summaries loaded · '+d.dataset_year;}catch(e){if(id===historyVersion)$('history-status').textContent=e.message}finally{if(id===historyVersion)$('show-history').disabled=false}}
+$('show-history').onclick=showHistory;
+$('history-hospital').onchange=()=>{historyVersion++;$('history-results').replaceChildren();$('history-status').textContent='Choose filters, then load the summary.';$('show-history').disabled=false};
+$('load-history').textContent='Load hospitals A–Z';
+$('load-history').onclick = async () => {
+  historyVersion++;
+  $('load-history').disabled = true;
+  $('history-hospital').disabled = true;
+  $('show-history').disabled = true;
+  $('history-hospital').replaceChildren();
+  $('history-results').replaceChildren();
+  $('history-status').textContent = 'Loading hospital names…';
+  try {
+    const hospitals = [];
+    const pageSize = 500;
+    let offset = 0;
+    while (true) {
+      const page = await api(`/api/history/hospitals?limit=${pageSize}&offset=${offset}`, {cache: 'no-store'});
+      hospitals.push(...page.hospitals);
+      if (!page.possibly_more || page.hospitals.length === 0) break;
+      offset += pageSize;
+      if (offset > 10000) throw Error('Hospital list exceeds the supported page range.');
+    }
+    // The displayed order is based on names, regardless of the API's ordering.
+    const collator = new Intl.Collator('en', {sensitivity: 'base', numeric: true});
+    hospitals.sort((a, b) =>
+      collator.compare(String(a.facility_name ?? '').trim(), String(b.facility_name ?? '').trim()) ||
+      collator.compare(String(a.hospital_id), String(b.hospital_id))
+    );
+    // Keep the facility ID only as the internal selection value.
+    $('history-hospital').innerHTML = hospitals.map(h =>
+      `<option value="${esc(h.hospital_id)}">${esc(String(h.facility_name ?? '').trim())}</option>`
+    ).join('');
+    const empty = hospitals.length === 0;
+    $('history-hospital').disabled = empty;
+    $('show-history').disabled = empty;
+    $('history-status').textContent = empty ? 'No hospitals returned.' :
+      `${hospitals.length} hospitals loaded A–Z by name. Choose a hospital, then load the summary.`;
+  } catch (e) {
+    $('history-status').textContent = e.message;
+  } finally {
+    $('load-history').disabled = false;
+  }
+};
 refresh();
 </script>
 </body>
