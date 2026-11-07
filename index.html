@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FastER - Patient Care Tracker</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+    >
+</head>
+
+<body class="bg-slate-50 font-sans text-slate-800 min-h-screen flex flex-col justify-between">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-xl mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <div class="bg-emerald-500 text-white p-2 rounded-lg flex items-center justify-center shadow-md">
+                    <i class="fa-solid fa-bolt-lightning text-lg animate-pulse" aria-hidden="true"></i>
+                </div>
+
+                <span class="font-extrabold text-xl tracking-tight text-slate-900">
+                    Fast<span class="text-emerald-500">ER</span>
+                </span>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <span class="relative flex h-3 w-3" aria-hidden="true">
+                    <span id="connection-ping" class="hidden absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span id="connection-dot" class="relative inline-flex rounded-full h-3 w-3 bg-slate-400"></span>
+                </span>
+
+                <span id="connection-label" class="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    Connecting
+                </span>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-xl mx-auto w-full px-4 py-6 flex-grow space-y-5">
+
+        <!-- Patient selection -->
+        <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+                <label
+                    for="patient-select"
+                    class="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-1"
+                >
+                    Demo Patient Profile
+                </label>
+
+                <select
+                    id="patient-select"
+                    onchange="fetchPatientData(this.value)"
+                    class="bg-slate-100 font-semibold text-sm text-slate-700 py-1.5 px-3 rounded-lg cursor-pointer focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
+                >
+                    <option value="PAT-001">Patient PAT-001</option>
+                    <option value="PAT-002">Patient PAT-002</option>
+                    <option value="PAT-003">Patient PAT-003</option>
+                    <option value="PAT-004">Patient PAT-004</option>
+                    <option value="PAT-005">Patient PAT-005</option>
+                </select>
+            </div>
+
+            <button
+                type="button"
+                onclick="refreshData()"
+                aria-label="Refresh patient data"
+                class="p-2.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-600 rounded-xl transition-all"
+            >
+                <i class="fa-solid fa-arrow-rotate-right" aria-hidden="true"></i>
+            </button>
+        </div>
+
+        <!-- Current status -->
+        <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <div class="flex flex-wrap justify-between items-start gap-3">
+                <div>
+                    <h1
+                        id="current-label"
+                        aria-live="polite"
+                        class="text-2xl font-black text-slate-900 tracking-tight"
+                    >
+                        Syncing Data...
+                    </h1>
+
+                    <p id="patient-id-badge" class="text-xs font-bold tracking-widest text-emerald-600 uppercase mt-0.5">
+                        ID: PAT-001
+                    </p>
+                </div>
+
+                <div id="risk-badge" class="hidden px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold rounded-full items-center gap-1.5">
+                    <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                    Admission Bottleneck Risk
+                </div>
+            </div>
+
+            <p id="current-text" class="text-sm text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">
+                Loading patient status...
+            </p>
+        </div>
+
+        <!-- AI insights -->
+        <div class="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-100 rounded-2xl p-4 shadow-inner">
+            <button
+                id="ai-toggle"
+                type="button"
+                onclick="toggleAIPanel()"
+                aria-expanded="false"
+                aria-controls="ai-panel"
+                class="w-full flex justify-between items-center font-bold text-sm text-emerald-900 uppercase tracking-wider"
+            >
+                <span class="flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles text-emerald-600" aria-hidden="true"></i>
+                    Gemini Clinical Co-Pilot
+                </span>
+
+                <i id="ai-chevron" class="fa-solid fa-chevron-down transition-transform" aria-hidden="true"></i>
+            </button>
+
+            <div id="ai-panel" class="hidden mt-3 pt-3 border-t border-emerald-200/50 text-xs text-emerald-800 leading-relaxed">
+                <div
+                    id="ai-content"
+                    aria-live="polite"
+                    class="bg-white/80 p-3 rounded-xl border border-emerald-200 text-slate-700 whitespace-pre-wrap"
+                >
+                    Click Generate Insights to request a patient summary.
+                </div>
+
+                <button
+                    id="ai-generate"
+                    type="button"
+                    onclick="loadAIAssessment()"
+                    disabled
+                    class="mt-2 w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg tracking-wide shadow-sm transition-colors text-[11px] uppercase disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    Generate Insights
+                </button>
+            </div>
+        </div>
+
+        <!-- Care timeline -->
+        <div class="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+            <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">
+                Care Flowchart Mapping
+            </h2>
+
+            <div class="relative pl-8 space-y-8 before:content-[''] before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[3px] before:bg-slate-100">
+
+                <div id="step-node-1" class="relative transition-all duration-300 opacity-40">
+                    <div id="step-dot-1" class="absolute -left-[31px] top-0.5 w-6 h-6 rounded-full border-4 border-white bg-slate-300 ring-4 ring-slate-100 z-10 flex items-center justify-center text-white text-[10px]" aria-hidden="true"></div>
+                    <h3 class="font-extrabold text-base text-slate-900">1. Triage Intake</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        Yale ESI data cataloged. Vital checks completed by triage.
+                    </p>
+                </div>
+
+                <div id="step-node-2" class="relative transition-all duration-300 opacity-40">
+                    <div id="step-dot-2" class="absolute -left-[31px] top-0.5 w-6 h-6 rounded-full border-4 border-white bg-slate-300 ring-4 ring-slate-100 z-10 flex items-center justify-center text-white text-[10px]" aria-hidden="true"></div>
+                    <h3 class="font-extrabold text-base text-slate-900">2. Active Diagnostics</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        Physicians reviewing labs, orders, and diagnostic updates.
+                    </p>
+                </div>
+
+                <div id="step-node-3" class="relative transition-all duration-300 opacity-40">
+                    <div id="step-dot-3" class="absolute -left-[31px] top-0.5 w-6 h-6 rounded-full border-4 border-white bg-slate-300 ring-4 ring-slate-100 z-10 flex items-center justify-center text-white text-[10px]" aria-hidden="true"></div>
+                    <h3 class="font-extrabold text-base text-slate-900 flex items-center gap-1.5">
+                        3. Boarding Status Wait
+                        <span id="boarding-warn-icon" class="hidden text-amber-500">
+                            <i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i>
+                        </span>
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        Admission approved. Stalled awaiting free inpatient beds upstairs.
+                    </p>
+                </div>
+
+                <div id="step-node-4" class="relative transition-all duration-300 opacity-40">
+                    <div id="step-dot-4" class="absolute -left-[31px] top-0.5 w-6 h-6 rounded-full border-4 border-white bg-slate-300 ring-4 ring-slate-100 z-10 flex items-center justify-center text-white text-[10px]" aria-hidden="true"></div>
+                    <h3 class="font-extrabold text-base text-slate-900">4. Room Transition</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        Transfer route cleared. Transitioning care out of emergency hub.
+                    </p>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <footer class="max-w-xl mx-auto w-full px-4 pb-6">
+        <div class="bg-slate-900 text-white rounded-2xl p-4 shadow-lg flex items-start space-x-3">
+            <i class="fa-solid fa-circle-info text-emerald-400 text-lg mt-0.5" aria-hidden="true"></i>
+            <div>
+                <h4 class="text-xs font-black uppercase tracking-widest text-slate-400">
+                    Why order shifts
+                </h4>
+                <p class="text-xs text-slate-300 leading-relaxed">
+                    Emergency care operates dynamically based on clinical priority,
+                    not arrival order. Severe traumas or stroke emergencies route
+                    ahead of lower-risk queues.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Change this if your backend uses another address or port.
+        const API_BASE = "http://127.0.0.1:8000";
+
+        let currentActivePatient = "PAT-001";
+        let patientRequestId = 0;
+        let aiRequestId = 0;
+        let patientLoaded = false;
+
+        function setConnectionStatus(status) {
+            const connected = status === "connected";
+
+            document.getElementById("connection-label").textContent =
+                connected
+                    ? "Connected"
+                    : status === "loading"
+                        ? "Connecting"
+                        : "Unavailable";
+
+            document.getElementById("connection-dot").className =
+                "relative inline-flex rounded-full h-3 w-3 " +
+                (connected ? "bg-emerald-500" : "bg-slate-400");
+
+            document.getElementById("connection-ping").className =
+                connected
+                    ? "animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"
+                    : "hidden";
+        }
+
+        async function fetchPatientData(patientId) {
+            const requestId = ++patientRequestId;
+
+            // Invalidate any AI summary request for the previous data.
+            aiRequestId++;
+            currentActivePatient = patientId;
+            patientLoaded = false;
+
+            document.getElementById("patient-id-badge").textContent =
+                `ID: ${patientId}`;
+
+            document.getElementById("current-label").textContent =
+                "Syncing Data...";
+
+            document.getElementById("current-text").textContent =
+                "Loading patient status...";
+
+            document.getElementById("ai-content").textContent =
+                "Click Generate Insights to request a patient summary.";
+
+            document.getElementById("ai-generate").disabled = true;
+
+            const riskBadge = document.getElementById("risk-badge");
+            const boardingWarn = document.getElementById("boarding-warn-icon");
+
+            riskBadge.classList.add("hidden");
+            riskBadge.classList.remove("flex");
+            boardingWarn.classList.add("hidden");
+
+            updateTrackerUI(0);
+            setConnectionStatus("loading");
+
+            try {
+                const response = await fetch(
+                    `${API_BASE}/patient/${encodeURIComponent(patientId)}`
+                );
+
+                if (!response.ok) {
+                    throw new Error(`Patient request failed (${response.status}).`);
+                }
+
+                const data = await response.json();
+
+                // Only the latest request may update the screen.
+                if (requestId !== patientRequestId) return;
+
+                const timeline = data.timeline_data;
+                const step = Number(timeline?.step);
+
+                if (
+                    !timeline ||
+                    typeof timeline.label !== "string" ||
+                    typeof timeline.text !== "string" ||
+                    typeof data.patient_id !== "string" ||
+                    !Number.isInteger(step) ||
+                    step < 1 ||
+                    step > 4
+                ) {
+                    throw new Error("The server returned invalid patient data.");
+                }
+
+                document.getElementById("current-label").textContent =
+                    timeline.label;
+
+                document.getElementById("current-text").textContent =
+                    timeline.text;
+
+                document.getElementById("patient-id-badge").textContent =
+                    `ID: ${data.patient_id}`;
+
+                const highRisk = data.high_admission_risk === true;
+
+                riskBadge.classList.toggle("hidden", !highRisk);
+                riskBadge.classList.toggle("flex", highRisk);
+                boardingWarn.classList.toggle("hidden", !highRisk);
+
+                updateTrackerUI(step);
+                setConnectionStatus("connected");
+
+                patientLoaded = true;
+                document.getElementById("ai-generate").disabled = false;
+            } catch (error) {
+                if (requestId !== patientRequestId) return;
+
+                console.error(error);
+                setConnectionStatus("error");
+
+                document.getElementById("current-label").textContent =
+                    "Unable to Load Patient";
+
+                document.getElementById("current-text").textContent =
+                    `${error.message} Check that app.py is running at ` +
+                    `${API_BASE} and permits requests from this page.`;
+            }
+        }
+
+        async function loadAIAssessment() {
+            if (!patientLoaded) return;
+
+            const requestId = ++aiRequestId;
+            const patientId = currentActivePatient;
+            const display = document.getElementById("ai-content");
+            const button = document.getElementById("ai-generate");
+
+            display.textContent = "Consulting Gemini Core Agent...";
+            button.disabled = true;
+
+            try {
+                const response = await fetch(
+                    `${API_BASE}/patient/${encodeURIComponent(patientId)}/ai-summary`
+                );
+
+                if (!response.ok) {
+                    throw new Error(`AI request failed (${response.status}).`);
+                }
+
+                const data = await response.json();
+
+                if (requestId !== aiRequestId) return;
+
+                if (data.success !== true) {
+                    throw new Error(
+                        data.error || "Unable to generate insights."
+                    );
+                }
+
+                if (typeof data.ai_brief !== "string" || !data.ai_brief.trim()) {
+                    throw new Error("The server returned an empty AI summary.");
+                }
+
+                display.textContent = data.ai_brief;
+            } catch (error) {
+                if (requestId !== aiRequestId) return;
+
+                console.error(error);
+                display.textContent = `Unable to generate insights: ${error.message}`;
+            } finally {
+                if (requestId === aiRequestId) {
+                    button.disabled = !patientLoaded;
+                }
+            }
+        }
+
+        function updateTrackerUI(activeStep) {
+            const dotBase =
+                "absolute -left-[31px] top-0.5 w-6 h-6 rounded-full " +
+                "border-4 border-white ring-4 z-10 flex items-center " +
+                "justify-center text-white text-[10px]";
+
+            for (let i = 1; i <= 4; i++) {
+                const node = document.getElementById(`step-node-${i}`);
+                const dot = document.getElementById(`step-dot-${i}`);
+
+                node.removeAttribute("aria-current");
+                dot.replaceChildren();
+
+                if (i < activeStep) {
+                    node.className =
+                        "relative transition-all duration-300 opacity-100";
+
+                    dot.className =
+                        `${dotBase} bg-emerald-500 ring-emerald-100`;
+
+                    const check = document.createElement("i");
+                    check.className = "fa-solid fa-check";
+                    dot.appendChild(check);
+                } else if (i === activeStep) {
+                    node.className =
+                        "relative transition-all duration-300 opacity-100 " +
+                        "scale-[1.01] font-medium";
+
+                    node.setAttribute("aria-current", "step");
+
+                    const colorClass = i === 3
+                        ? "bg-amber-500 ring-amber-100"
+                        : "bg-emerald-500 ring-emerald-200";
+
+                    dot.className =
+                        `${dotBase} ${colorClass} animate-pulse`;
+                } else {
+                    node.className =
+                        "relative transition-all duration-300 opacity-40";
+
+                    dot.className =
+                        `${dotBase} bg-slate-300 ring-slate-100`;
+                }
+            }
+        }
+
+        function toggleAIPanel() {
+            const panel = document.getElementById("ai-panel");
+            const chevron = document.getElementById("ai-chevron");
+            const toggle = document.getElementById("ai-toggle");
+
+            const isHidden = panel.classList.toggle("hidden");
+
+            chevron.classList.toggle("rotate-180", !isHidden);
+            toggle.setAttribute("aria-expanded", String(!isHidden));
+        }
+
+        function refreshData() {
+            fetchPatientData(
+                document.getElementById("patient-select").value
+            );
+        }
+
+        window.addEventListener("DOMContentLoaded", refreshData);
+    </script>
+</body>
+</html>
