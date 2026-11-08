@@ -106,14 +106,25 @@ async def databricks_snapshot(name):
     return meta, [by_hospital[h] for h in HOSPITALS]
 
 
-async def get_snapshot():
-    """(meta, rows, source). Databricks in connected mode; labeled fallback to built-in scenarios."""
+async def get_snapshot(source=None):
+    from fastapi import HTTPException
     name = _current["name"]
+    if source == "databricks":
+        try:
+            meta, rows = await databricks_snapshot(name)
+        except HTTPException:
+            raise
+        except (ValueError, KeyError, TypeError) as exc:
+            raise HTTPException(502, f"Databricks scenario table is incomplete or invalid: {exc}")
+        return meta, rows, "databricks"
+    if source == "built_in":
+        meta, rows = snapshot(name)
+        return meta, rows, "built-in scenarios"
     if os.getenv("DATA_MODE", "demo") == "databricks":
         try:
             meta, rows = await databricks_snapshot(name)
             return meta, rows, "databricks"
-        except Exception:  # HTTPException from execute(), ValueError, KeyError, TypeError
+        except Exception:
             meta, rows = snapshot(name)
             return meta, rows, "built-in scenarios (Databricks query failed)"
     meta, rows = snapshot(name)

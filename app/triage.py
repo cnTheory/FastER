@@ -5,12 +5,13 @@ Pipeline:  injury text -> (Gemini) acuity + needs -> (algorithm) score every hos
 
 NOT a medical device. Acuity levels follow the idea of the 5-level ESI scale but are NOT a validated triage.
 """
+from typing import Literal
 import csv
 import math
 import os
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app import gemini, scenarios
@@ -31,12 +32,22 @@ NAMES = {"AMC": "Albany Medical Center Hospital", "SPH": "St. Peter's Hospital",
 _ref_cache = {}
 
 
-def _load_csv_reference():
-    with REFERENCE_CSV.open(newline="") as f:
-        return {r["hospital_id"]: {**r, "trauma_admissions": int(r["trauma_admissions"]),
-                                   "pediatric_share": float(r["pediatric_share"]),
-                                   "boarding_factor": float(r["boarding_factor"]),
-                                   "severe_share": float(r["severe_share"])} for r in csv.DictReader(f)}
+async def load_reference(source=None):
+    if source == "databricks":
+        try:
+            return await _load_databricks_reference(), "databricks"
+        except HTTPException:
+            raise
+        except (ValueError, KeyError, TypeError) as exc:
+            raise HTTPException(502, f"Databricks SPARCS reference data is incomplete or invalid: {exc}")
+    if source == "built_in":
+        return _load_csv_reference(), "bundled_csv"
+    if os.getenv("DATA_MODE", "demo") == "databricks":    
+        with REFERENCE_CSV.open(newline="") as f:
+            return {r["hospital_id"]: {**r, "trauma_admissions": int(r["trauma_admissions"]),
+                                    "pediatric_share": float(r["pediatric_share"]),
+                                    "boarding_factor": float(r["boarding_factor"]),
+                                    "severe_share": float(r["severe_share"])} for r in csv.DictReader(f)}
 
 
 async def _load_databricks_reference():
@@ -122,6 +133,7 @@ class RecommendRequest(BaseModel):
     # Optional manual override (e.g. from a dropdown) if Gemini is unavailable.
     acuity: int | None = Field(default=None, ge=1, le=5)
     needs_trauma: bool | None = None
+    source: Literal["databricks", "built_in"] | None = None
 
 
 CLASSIFY_SYSTEM = (
@@ -156,18 +168,22 @@ def choose_scenario(name: str):
 
 
 @router.get("/status")
-async def live_status():
-    meta, rows, status_source = await scenarios.get_snapshot()
-    reference, source = await load_reference()
-    return {"synthetic": True, "scenario": meta, "reference_source": source, "status_source": status_source,
-            "hospitals": [{**r, "name": NAMES[r["hospital_id"]],
-                           "reference": reference[r["hospital_id"]]} for r in rows]}
+async def live_status(source: Literal["databricks", "built_in"] | None = None,
+                      acuity: int = Query(3, ge=1, le=5)):
+    meta, rows, status_source = await scenarios.get_snapshot(source)
+    reference, ref_source = await load_reference(source)
+    preview = {h["hospital_id"]: h for h in score_hospitals(rows, reference, acuity, False, False)}
+    return {"synthetic": True, "scenario": meta, "reference_source": ref_source, "status_source": status_source,
+            "preview_acuity": acuity,
+            "hospitals": [{**r, "name": NAMES[r["hospital_id"]], "reference": reference[r["hospital_id"]],
+                           "preview_wait_minutes": preview[r["hospital_id"]]["estimated_wait_minutes"],
+                           "preview_total_minutes": preview[r["hospital_id"]]["total_minutes"]} for r in rows]}
 
 
 @router.post("/recommend")
 async def recommend(body: RecommendRequest):
-    meta, rows, status_source = await scenarios.get_snapshot()
-    reference, ref_source = await load_reference()
+    meta, rows, status_source = await scenarios.get_snapshot(body.source)
+    reference, ref_source = await load_reference(body.source)
 
     # 1) Urgency: manual override > Gemini > conservative default
     triage_source, summary = "manual", body.injury_description[:200]
