@@ -6,18 +6,10 @@ from unittest.mock import patch
 
 os.environ["DATA_MODE"] = "demo"
 from fastapi.testclient import TestClient
-from faster.capacity import main, generate_data
-import tempfile
-from pathlib import Path
+from app import main
 
 class FlowTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory()
-        self.addCleanup(self.temp.cleanup)
-        for target, attribute, value in [(main, "MODE", "demo"), (main, "ROOT", Path(self.temp.name)), (generate_data, "ROOT", Path(self.temp.name))]:
-            patcher = patch.object(target, attribute, value)
-            patcher.start()
-            self.addCleanup(patcher.stop)
         self.client_context = TestClient(main.app)
         self.client = self.client_context.__enter__()
 
@@ -69,6 +61,25 @@ class FlowTests(unittest.TestCase):
         with patch.object(main, "MODE", "databricks"), patch.dict(os.environ, {"DATABRICKS_HOST":""}):
             self.assertEqual(self.client.get("/api/hospitals").status_code,503)
             self.assertEqual(self.client.post("/api/demo/staff",json={"hospital_id":"H1","active_clinicians":1}).status_code,403)
+
+    def test_recommend_falls_back_to_algorithm_without_key(self):
+        with patch.dict(os.environ,{"GEMINI_API_KEY":""}):
+            r=self.client.post("/api/recommend",json={"capability":"general"}).json()
+        self.assertEqual(r["decision_source"],"algorithm")
+        self.assertEqual(r["hospital_id"],"H2")
+
+    def test_recommend_rejects_gemini_pick_outside_eligible_set(self):
+        class FakeResp:
+            def raise_for_status(self): pass
+            def json(self): return {"candidates":[{"content":{"parts":[{"text":'{"hospital_id":"H99","reason":"x"}'}]}}]}
+        class FakeClient:
+            def __init__(self,*a,**k): pass
+            async def __aenter__(self): return self
+            async def __aexit__(self,*a): pass
+            async def post(self,*a,**k): return FakeResp()
+        with patch.dict(os.environ,{"GEMINI_API_KEY":"k"}), patch.object(main.httpx,"AsyncClient",FakeClient):
+            r=self.client.post("/api/recommend",json={"capability":"general"}).json()
+        self.assertEqual(r["decision_source"],"algorithm")
 
     def test_homepage(self):
         self.assertIn("Synthetic demonstration only",self.client.get("/").text)

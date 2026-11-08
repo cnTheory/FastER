@@ -14,13 +14,20 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from .generate_data import ROOT, generate
-from .history import router as history_router
-from .databricks import execute, quote_table
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # local runs in WSL; in Docker the vars come from compose
+except ImportError:
+    pass
+
+from scripts.generate_data import ROOT, generate
+from app.history import router as history_router
+from app.databricks import execute, quote_table
 
 MODE = os.getenv("DATA_MODE", "demo")
 LOCK = threading.Lock()
 STALE_SECONDS = 15 * 60
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
 
 @asynccontextmanager
 async def lifespan(app):
@@ -161,7 +168,7 @@ async def explain(body: ExplainRequest):
     best = next((h for h in evidence["hospitals"] if h["hospital_id"] == evidence["best_hospital_id"]), None)
     fallback = (f"In this fictional scenario, {best['name']} has the lowest illustrative travel-plus-wait total of {best['total_minutes']:g} minutes. Actual clinical priority and waits can differ." if best else
         "No hospital has fresh, matching data with reported clinician capacity. No comparison is available.")
-    key, model = os.getenv("GEMINI_API_KEY"), os.getenv("GEMINI_MODEL")
+    key, model = os.getenv("GEMINI_API_KEY"), os.getenv("GEMINI_MODEL") or DEFAULT_GEMINI_MODEL
     if not key or not model or not best:
         return {"provider": "template", "text": fallback}
     if not re.fullmatch(r"[A-Za-z0-9._-]+", model):
@@ -186,3 +193,58 @@ async def explain(body: ExplainRequest):
                 "notice": "AI-generated explanation of simulated aggregate data; verify against the cards."}
     except (httpx.HTTPError, KeyError, IndexError, ValueError):
         return {"provider": "template (Gemini unavailable)", "text": fallback}
+
+
+class RecommendRequest(BaseModel):
+    capability: str = Field(default="general", pattern=r"^(general|imaging|pediatric)$")
+    situation: str = Field(default="", max_length=500)
+
+@app.post("/api/recommend")
+async def recommend(body: RecommendRequest):
+    """Databricks data -> Gemini picks among eligible hospitals -> backend validates the pick.
+
+    Gemini can only choose from hospitals the deterministic algorithm already marked eligible.
+    If Gemini is unconfigured, fails, or returns anything invalid, the lowest-total hospital wins.
+    """
+    evidence = await comparison(body.capability)
+    eligible = [h for h in evidence["hospitals"] if h["total_minutes"] is not None]
+    if not eligible:
+        return {"hospital_id": None, "decision_source": "none",
+                "reason": "No hospital has fresh, matching data with reported clinician capacity."}
+    baseline = eligible[0]
+    fallback = {"hospital_id": baseline["hospital_id"], "name": baseline["name"],
+                "decision_source": "algorithm",
+                "reason": f"Lowest travel-plus-wait total ({baseline['total_minutes']:g} min)."}
+    key = os.getenv("GEMINI_API_KEY")
+    model = os.getenv("GEMINI_MODEL") or DEFAULT_GEMINI_MODEL
+    if not key or not re.fullmatch(r"[A-Za-z0-9._-]+", model):
+        return fallback
+    options = [{k: h[k] for k in ("hospital_id", "name", "travel_minutes", "estimated_wait_minutes",
+                                  "total_minutes", "queue_count", "active_clinicians")} for h in eligible]
+    try:
+        async with httpx.AsyncClient(timeout=25) as client:
+            response = await client.post(
+                f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                headers={"x-goog-api-key": key},
+                json={"systemInstruction": {"parts": [{"text":
+                        "You help reduce emergency department crowding by choosing among the supplied hospitals. "
+                        "Pick exactly one hospital_id from the options, balancing total_minutes against crowding "
+                        "(queue_count per active_clinicians). Use only the supplied numbers. Do not diagnose. "
+                        'Reply as JSON: {"hospital_id": string, "reason": string (max 2 sentences)}.'}]},
+                      "contents": [{"role": "user", "parts": [{"text": json.dumps(
+                          {"capability": body.capability, "patient_note": body.situation, "options": options})}]}],
+                      "generationConfig": {"temperature": 0.1, "maxOutputTokens": 600,
+                                           "responseMimeType": "application/json"}})
+            response.raise_for_status()
+            payload = response.json()
+        text = "".join(p.get("text", "") for p in payload["candidates"][0]["content"]["parts"] if not p.get("thought"))
+        choice = json.loads(text)
+        picked = next((h for h in eligible if h["hospital_id"] == choice.get("hospital_id")), None)
+        if picked is None:
+            return fallback
+        return {"hospital_id": picked["hospital_id"], "name": picked["name"], "decision_source": "gemini",
+                "reason": str(choice.get("reason", ""))[:500],
+                "algorithm_best_hospital_id": baseline["hospital_id"],
+                "notice": "Gemini chose among hospitals the backend had already validated. If this is an emergency, call 911."}
+    except (httpx.HTTPError, KeyError, IndexError, ValueError, TypeError):
+        return fallback

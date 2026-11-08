@@ -1,125 +1,159 @@
-# FastER
+# FastER Docker starter
 
-HackRPI demo: a patient care tracker backed by FastAPI and SQLite. The backend from `faster_backend.zip` is integrated into the existing `src/faster` package. The patient tracker, SPARCS archive in `data/sparcs24.csv.xz`, and the newly attached `faster-starter` capacity/history dashboard are retained. The capacity/history dashboard is also integrated at `/capacity/`.
+A single-container, mobile-responsive web dashboard and FastAPI backend. It runs immediately with synthetic CSV snapshots and can later read the same aggregate contract from Databricks. Gemini explanations are optional. Fish Audio is an extension point, not implemented in this starter.
 
-## Run locally
+This is a programming scaffold for a hackathon demonstration. It does not assess symptoms, perform medical triage, identify clinically appropriate destinations, or predict real hospital waits. All hospitals, travel times, and records are fictional. Databricks mode is also intended for synthetic/test data only.
 
-Use Python 3.12 or newer. From the extracted **FastER** directory:
+## Run in Docker
 
-```sh
-python -m venv .venv
-```
+Install/start Docker Desktop, unzip this folder, and open a terminal inside it:
 
-Activate the environment:
-
-```powershell
-# Windows PowerShell
-.venv\Scripts\Activate.ps1
-```
-
-```sh
-# macOS / Linux
-source .venv/bin/activate
-```
-
-Then install and launch:
-
-```sh
-python -m pip install -e .
-faster
-```
-
-Open **http://127.0.0.1:8000** for the tracker and **http://127.0.0.1:8000/docs** for the API. Serve the tracker through this address rather than opening the HTML file directly. FastAPI serves both the page and `/api`, so no separate frontend server is needed.
-
-Alternatively, with uv installed:
-
-```sh
-uv sync
-uv run faster
-```
-
-For auto-reload during development:
-
-```sh
-python -m uvicorn faster.app:app --reload
-```
-
-The first launch creates and seeds `data/faster.db`. Later launches preserve it. To explicitly delete and regenerate synthetic records:
-
-```sh
-python -m faster.init_db --reset
-```
-
-## Docker (both dashboards and backend)
-
-From the top-level **FastER** directory, copy `.env.example` to `.env`, then run:
-
-```sh
+```bash
+cp .env.example .env
 docker compose up --build
 ```
 
-Open http://127.0.0.1:8000 for the tracker and http://127.0.0.1:8000/capacity/ for the capacity/history dashboard. SQLite and capacity CSV data are stored in the `faster-data` volume. Demo capacity snapshots reset on startup, matching the supplied starter's behavior; SQLite patients persist. The original `faster-starter/` remains available as a separate standalone scaffold with its original Docker setup. Use the top-level commands for the integrated app. Docker builds were not executed in this environment.
+Open http://localhost:8000. Stop with Ctrl+C, then `docker compose down`.
 
-## Capacity and historical dashboard
+The image includes both the HTML/CSS/JavaScript frontend and Python API. No Node installation, database server, or external keys are needed for local mode. Credentials are runtime environment variables; `.env` is excluded from the image and Git. The published port binds to localhost. The demo mutation endpoint has no authentication; do not expose this starter publicly.
 
-The supplied capacity UI and history APIs are mounted at **`/capacity/`**. Its API documentation is at `/capacity/docs`; for example, its hospital comparison endpoint is `/capacity/api/hospitals`. The patient API keeps `/api/hospitals` as a hospital directory. Links connect the two pages.
+To build/run without Compose:
 
-The capacity cards retain the starter's fictional H1/H2/H3 hospitals and CSV snapshots. They are a separate simulation from the patient tracker's SQLite hospitals; staffing edits in one do not alter the other. Databricks history keeps its existing filters, pagination, parameterized SQL, and alphabetical hospital list. Set `DATABRICKS_HOST`, `DATABRICKS_TOKEN`, `DATABRICKS_WAREHOUSE_ID`, and optionally `DATABRICKS_HISTORY_VIEW` to enable history. `DATA_MODE=databricks` additionally switches capacity cards to `DATABRICKS_GOLD_TABLE`. Historical access without credentials returns a clear configuration error.
-
-## Try the demo
-
-1. Select a hospital and sign in with the default demo staff code **staff123**.
-2. Choose a patient from the database-backed list.
-3. Change their status and click **Save status**. Refresh reloads active patients and hospital totals; admitted/discharged patients leave the active list.
-4. For a patient-only view, open `http://127.0.0.1:8000/?patient_id=PAT-...` with an actual patient ID from the staff view. Staff controls and AI insights require a staff session.
-5. Try intake, hospital ranking, patient registration, and feed updates through `/docs`.
-
-Staff sessions are kept in browser memory and expire after eight hours. Signing out revokes the token. A backend restart invalidates all sessions.
-
-## Configuration and optional integrations
-
-Copy `.env.example` to `.env` if you want to change settings. All integrations are optional; an empty `.env` works. A blank `DB_PATH` uses `data/faster.db`; relative paths are resolved from the project directory. `HOST` and `PORT` configure the `faster` command.
-
-- **Offline:** SQLite, synthetic CSV outcomes, and keyword intake/ranking explanations work without credentials.
-- **Gemini:** `python -m pip install -e ".[ai]"`, then set `GEMINI_API_KEY` and, optionally, `GEMINI_MODEL`. Clinical summaries require a configured AI provider; failures produce a visible unavailable message.
-- **Databricks SQL:** `python -m pip install -e ".[databricks]"`, then set `DATABRICKS_HOST`, `DATABRICKS_TOKEN`, and `DATABRICKS_HTTP_PATH`. `databricks_gold.sql` contains the supplied SPARCS aggregation query. If SQL is unavailable, the packaged synthetic CSV is used.
-- **Databricks-served Gemini:** install the AI extra and configure the host, token, and the model supported by your workspace. This integration is preserved from the supplied backend and requires verification in your workspace.
-- **Staff/feed:** set `STAFF_CODE` and `LIVE_FEED_KEY` to override the demo defaults.
-- **Separate frontends:** list their origins in comma-separated `CORS_ORIGINS`. The included page uses same-origin `/api` calls.
-
-## API
-
-| Method | Path | Access / purpose |
-| --- | --- | --- |
-| GET | `/health` | Health and outcomes source |
-| GET | `/api/hospitals` | Hospital IDs and names |
-| POST | `/api/intake` | Text to structured symptoms; offline keyword fallback |
-| POST | `/api/triage` | Estimated severity and hospital ranking |
-| POST | `/api/incoming` | Record an expected arrival |
-| GET | `/api/patient/{patient_id}` | Patient tracking link |
-| POST | `/api/live/{hospital_id}` | `X-Feed-Key`; staff count and optional five-level queue |
-| POST | `/api/staff/login` | Hospital ID + shared demo code; returns token |
-| POST | `/api/staff/logout` | Bearer token; revoke session |
-| GET | `/api/staff/dashboard` | Bearer token; hospital-scoped patients, beds, incoming |
-| POST | `/api/staff/patients` | Bearer token; register a patient |
-| POST | `/api/staff/update-status` | Bearer token; update own hospital's patient |
-| GET | `/api/staff/patient/{patient_id}/ai-summary` | Bearer token; staff-only summary |
-
-Older `/api/patients` and `/api/patient/{patient_id}/ai-summary` paths remain as hospital-scoped, staff-authenticated compatibility routes. The tracker now uses the canonical staff endpoints. Fixed `PAT-001` selectors are replaced by real generated IDs. A discharge is handled as a terminal outcome without implying inpatient transfer.
-
-Queues derive from patients in TRIAGE. A live-feed override lasts 15 minutes. Incoming entries expire after three hours. Bed occupancy is seeded demo data; changing patient status updates the boarding total but does not assign or release a specific bed.
-
-The old `er_flow.db` schema is not automatically migrated. This backend uses a new hospital-scoped database; keep any old database separately.
-
-## Validation
-
-```sh
-python -m pip install -e ".[dev]"
-python -m pytest -q
+```bash
+docker build -t faster-demo:local .
+docker run --rm -p 127.0.0.1:8000:8000 --env-file .env faster-demo:local
 ```
 
-Tests cover startup, offline intake/ranking, registration/status changes, derived queues, feed expiry, staff sessions, cross-hospital restrictions, and AI error handling. JavaScript syntax and wheel asset inclusion were also checked. An interactive browser check could not be completed because the browser download was unavailable. Capacity comparison and historical query routes are additionally exercised through the mounted app with mocked Databricks responses. External Gemini/Databricks calls require credentials and were not exercised as part of integration.
+You can run the image with this command on an ordinary Docker host. Each process startup in local demo mode generates fresh example snapshots; edits are deliberately temporary. To regenerate CSV files for upload:
 
-## Demo data and limits
+```bash
+python scripts/generate_data.py
+```
 
-This is a hackathon prototype with synthetic patients, mock admission predictions, synthetic outcome indices, approximate travel times, and an unvalidated scoring heuristic inherited from the supplied backend. The SPARCS archive is retained as source material; local rankings use the packaged CSV unless Databricks is configured. Seed hospital details, facility IDs, and insurance lists require replacement/verification before real use. Shared staff codes and public patient tracking links are demo access controls. Use synthetic data for the demo.
+Use one worker in this scaffold: local CSV mutation is process-locked, not multi-process transactional storage.
+
+## What to try
+
+1. The initial general comparison selects Demo Hillcrest: 18 fixed travel minutes + 24 illustrative wait minutes = 42 minutes.
+2. Choose Demo Hillcrest in the staffing panel and set on-shift clinicians to 0. Apply the change.
+3. Hillcrest becomes unranked and Demo Riverside has the lowest total. Zero capacity is not treated as zero wait.
+4. Choose the pediatric filter. Riverside is excluded because it lacks that demo capability.
+5. Request an explanation. Without Gemini configuration, an explicitly labeled template works.
+6. Inspect the backend JSON. It contains aggregate hospital counts, not patient or staff identifiers.
+
+The calculation is `ceil(waiting_visits * service_minutes / on_shift_clinicians)`. `service_minutes` is an invented 12-minute interval between new assessments per clinician, NOT a measured average visit duration. In-care visits are excluded from the queue but their residual work is not modeled. On-shift clinicians are not necessarily free. Triage, admission boarding, beds, nurses, and treatment complexity are not modeled. The result is an engineering demonstration, not a validated predictor. Travel times are fixed examples, not a routing API.
+
+## How the data fits together
+
+Each source is a separate table. Join using a canonical `hospital_id`, not hospital names. A real ingestion adapter must map source facility codes to that ID.
+
+| CSV | Grain | Essential fields |
+| --- | --- | --- |
+| hospitals.csv | One hospital per complete snapshot | hospital_id, name, travel_minutes, capabilities, service_minutes, observed_at |
+| visits.csv | One visit state per update | visit_id, hospital_id, status, arrival_at, updated_at |
+| staff.csv | One staff state per update | staff_id, hospital_id, role, on_shift, updated_at |
+
+The sample generator writes complete snapshots with timezone-aware UTC timestamps. Visits have WAITING, IN_CARE, or DISCHARGED states. Staff roles are clinician and nurse; only clinician counts are used by the toy formula. Staff counts mean on shift, not idle or guaranteed available. Capabilities are pipe-separated strings.
+
+Local mode reads the snapshots, keeps the latest update per visit/staff ID, aggregates the records, and returns the API contract. The Databricks notebook performs the corresponding batch processing with raw, clean, and aggregate Delta tables.
+
+Never join raw patient visits directly to raw staff rows and then count: 10 visits joined to 4 staff can produce 40 rows. Aggregate visits and staff independently by hospital first; then join those two summaries.
+
+For real event feeds, preserve raw history and handle late updates, discharge events, staff shift endings, missing data, and source outages explicitly. A quiet source is not proof of an empty hospital. The batch demo assumes complete snapshots; a production feed needs separate source heartbeats and completeness checks. These are future integration requirements, not features provided here.
+
+## Connect Databricks
+
+1. Run `python scripts/generate_data.py` to create the sample CSVs. Run it just before upload so source timestamps are fresh.
+2. Import `databricks_pipeline.py` into your Databricks workspace as a Python notebook.
+3. Set the notebook's catalog widget to an existing writable catalog. The default `workspace` may need changing for your workspace. The notebook creates the `faster` schema and `incoming` volume if permitted.
+4. Run the first notebook cell, then upload all three CSVs into `/Volumes/<catalog>/faster/incoming/` through the Catalog UI. Upload these controlled synthetic snapshots as one batch and run downstream cells after all uploads complete.
+5. Run the remaining cells. They create bronze raw tables, silver cleaned tables, rejection tables, and `gold_hospital_status`.
+6. Select an available SQL warehouse and obtain its warehouse ID. Configure an appropriate workspace credential (the starter uses bearer-token authentication). The credential needs permission to use the warehouse and SELECT the Gold table, with USE CATALOG / USE SCHEMA as needed. Use the workspace-supported authentication method; do not weaken account controls to obtain a token.
+7. Edit `.env`:
+
+```dotenv
+DATA_MODE=databricks
+DATABRICKS_HOST=https://your-workspace-host
+DATABRICKS_TOKEN=your-server-side-workspace-token
+DATABRICKS_WAREHOUSE_ID=your-warehouse-id
+DATABRICKS_GOLD_TABLE=workspace.faster.gold_hospital_status
+```
+
+8. Recreate the container so it receives the new environment:
+
+```bash
+docker compose up --build --force-recreate
+```
+
+The backend sends a fixed SELECT to `/api/2.0/sql/statements` with INLINE JSON_ARRAY results. It checks SQL execution state as well as HTTP success. Connected mode never silently falls back to demo CSVs if the query fails. Staff controls are disabled in connected mode. To change connected results, regenerate/upload the synthetic snapshots and rerun the notebook. Nothing is pushed from this demo's staff control to Databricks.
+
+This is deliberately batch ingestion, not a live production feed. Auto Loader/Lakeflow can be a later step for new files. Re-running the notebook replaces the current tables. Do not rerun its overwrite steps on a production dataset.
+
+Gold table contract:
+
+| Column | Type | Meaning |
+| --- | --- | --- |
+| hospital_id | STRING | Canonical facility ID |
+| name | STRING | Fictional display name |
+| travel_minutes | DOUBLE | Fixed demo travel duration |
+| capabilities | STRING | e.g. general\|imaging |
+| service_minutes | DOUBLE | Invented assessment-start interval |
+| queue_count | BIGINT | Waiting visit count |
+| active_clinicians | BIGINT | On-shift clinician count |
+| observed_at | STRING | UTC ISO 8601 source snapshot time |
+
+The app suppresses estimates after 15 minutes. This is a chosen demo threshold, not a clinical standard. Refreshing the page or rerunning the notebook does not make old source data fresh. Generate new synthetic snapshots to refresh the source timestamps. Real feeds must preserve original observation times.
+
+## Connect Gemini
+
+Add a Gemini API key and an enabled, generateContent-compatible model ID to `.env`, then recreate the container:
+
+```dotenv
+GEMINI_API_KEY=your-server-side-key
+GEMINI_MODEL=your-enabled-model-id
+```
+
+The API uses the REST `generateContent` endpoint. It sends aggregate comparison JSON, not raw visit/staff records, and asks Gemini for a short explanation. It falls back to a template on a provider failure. The interface labels the explanation source.
+
+Gemini does not store the hospital data, calculate the rankings, certify hospital suitability, or infer medical urgency here. Prompt instructions do not guarantee factual correctness. The numeric cards remain the authoritative backend result. A deployed explanation system would need output validation and clinical review appropriate to its scope. Choose synthetic data while testing; do not send real health records to external model services without an approved data-handling setup.
+
+An agent can be added later using function calls such as `get_hospital_status` and `compare_hospitals`. Validate all tool arguments on the server; avoid unrestricted model-generated SQL. A bounded query/API contract is enough for this prototype.
+
+## Add Fish Audio later
+
+Add a server-side `/api/speech` endpoint that takes the approved explanation text, calls Fish Audio's TTS API, and returns an audio response. Play that response using an HTML audio element. Keep the Fish key on the server. Patient spoken input is a separate speech-to-text step; TTS alone does not listen or transcribe. This starter does not include a Fish Audio integration and should not be submitted as if it does.
+
+## API endpoints
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| GET | / | Dashboard |
+| GET | /api/health | Application liveness, not upstream health |
+| GET | /api/hospitals?capability=general | Aggregate comparisons |
+| POST | /api/demo/staff | Change synthetic local staffing only |
+| POST | /api/explain | Gemini or template explanation |
+| GET | /docs | Interactive FastAPI API reference |
+
+## Local development and verification
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+For tests, install httpx (already in requirements) and run:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Verified locally: eight API/logic tests covering queue aggregation, staffing-driven comparison change, capability filtering, stale source handling, zero staffing, invalid requests, aggregate-only responses, template fallback, and refusal to silently use demo data when Databricks is unavailable. Python and frontend JavaScript syntax were checked. The Databricks notebook and authenticated provider calls require your workspace and credentials and were not executed against live accounts. Docker was unavailable in the authoring environment, so an actual image build was not run. Automated browser rendering was blocked by that environment's process/socket restrictions; the layout still needs a visual check in your browser.
+
+## Reference documentation
+
+- Databricks SQL statements: https://docs.databricks.com/api/statement-execution/v1/execute-statement
+- Databricks Auto Loader: https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/
+- Gemini API: https://ai.google.dev/gemini-api/docs
+- Fish Audio: https://docs.fish.audio/developer-guide/getting-started/quickstart
