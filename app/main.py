@@ -14,13 +14,21 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()  # local runs in WSL; in Docker the vars come from compose
+except ImportError:
+    pass
+
 from scripts.generate_data import ROOT, generate
 from app.history import router as history_router
+from app.triage import router as triage_router
 from app.databricks import execute, quote_table
 
 MODE = os.getenv("DATA_MODE", "demo")
 LOCK = threading.Lock()
 STALE_SECONDS = 15 * 60
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
 
 @asynccontextmanager
 async def lifespan(app):
@@ -32,6 +40,7 @@ async def lifespan(app):
 
 app = FastAPI(title="FastER capacity and history demo", lifespan=lifespan)
 app.include_router(history_router)
+app.include_router(triage_router)
 
 def read_csv(name):
     with (ROOT / name).open(newline="") as f:
@@ -120,6 +129,10 @@ async def comparison(capability):
 def index():
     return FileResponse(Path(__file__).parent / "static" / "index.html")
 
+@app.get("/triage")
+def triage_page():
+    return FileResponse(Path(__file__).parent / "static" / "triage.html")
+
 @app.get("/api/health")
 def health():
     return {"status": "ok", "mode": MODE}
@@ -161,7 +174,7 @@ async def explain(body: ExplainRequest):
     best = next((h for h in evidence["hospitals"] if h["hospital_id"] == evidence["best_hospital_id"]), None)
     fallback = (f"In this fictional scenario, {best['name']} has the lowest illustrative travel-plus-wait total of {best['total_minutes']:g} minutes. Actual clinical priority and waits can differ." if best else
         "No hospital has fresh, matching data with reported clinician capacity. No comparison is available.")
-    key, model = os.getenv("GEMINI_API_KEY"), os.getenv("GEMINI_MODEL")
+    key, model = os.getenv("GEMINI_API_KEY"), os.getenv("GEMINI_MODEL") or DEFAULT_GEMINI_MODEL
     if not key or not model or not best:
         return {"provider": "template", "text": fallback}
     if not re.fullmatch(r"[A-Za-z0-9._-]+", model):
@@ -186,3 +199,4 @@ async def explain(body: ExplainRequest):
                 "notice": "AI-generated explanation of simulated aggregate data; verify against the cards."}
     except (httpx.HTTPError, KeyError, IndexError, ValueError):
         return {"provider": "template (Gemini unavailable)", "text": fallback}
+
