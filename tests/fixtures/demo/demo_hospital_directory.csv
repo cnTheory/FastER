@@ -1,0 +1,6 @@
+hospital_id,ny_facility_id,facility_name,facility_type_code,facility_type,address1,address2,city,state,zip_code,phone,website,county,latitude,longitude,main_site_name,main_site_facility_id,ownership_type
+sam,756,Samaritan Hospital,HOSP,Hospital,2215 Burdett Avenue,,Troy,New York,12180,5182713300,,Rensselaer,42.733574,-73.671455,,,Not for Profit Corporation
+sp,5,St. Peter's Hospital,HOSP,Hospital,315 South Manning Boulevard,,Albany,New York,12208,5184541550,,Albany,42.657539,-73.803879,,,Not for Profit Corporation
+amc,1,Albany Medical Center Hospital,HOSP,Hospital,43 New Scotland Avenue,,Albany,New York,12208,5182623474,,Albany,42.65337,-73.773834,,,Not for Profit Corporation
+ell,829,Ellis Hospital,HOSP,Hospital,1101 Nott Street,,Schenectady,New York,12308,5182434000,,Schenectady,42.819839,-73.918747,,,Not for Profit Corporation
+sar,818,Saratoga Hospital,HOSP,Hospital,211 Church Street,,Saratoga Springs,New York,12866,5185873222,,Saratoga,43.084843,-73.796341,,,Not for Profit Corporation

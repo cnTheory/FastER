@@ -1,0 +1,6 @@
+hospital_id,ny_facility_id,permanent_facility_id,mapping_status,mapping_rule
+sam,756,000756,user_verified_capital_region,"LPAD(fac_id,6,0)"
+sp,5,000005,user_verified_capital_region,"LPAD(fac_id,6,0)"
+amc,1,000001,user_verified_capital_region,"LPAD(fac_id,6,0)"
+ell,829,000829,user_verified_capital_region,"LPAD(fac_id,6,0)"
+sar,818,000818,user_verified_capital_region,"LPAD(fac_id,6,0)"

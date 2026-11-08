@@ -1,0 +1,722 @@
+[
+  {
+    "scenario_id": "baseline",
+    "intake": {
+      "symptoms": [
+        "fracture"
+      ],
+      "age": 25,
+      "pain": 5,
+      "peds": false,
+      "trauma": false
+    },
+    "level": 3,
+    "ranking": [
+      {
+        "hospital_id": "sam",
+        "name": "Samaritan Hospital",
+        "city": "Troy",
+        "drive_min": 6,
+        "wait_min": 12,
+        "score": 18,
+        "estimated_total_min": 18,
+        "outcome_index": 1.0,
+        "condition": "trauma",
+        "staff_on": 5,
+        "compatible": [],
+        "warnings": []
+      },
+      {
+        "hospital_id": "sp",
+        "name": "St. Peter's Hospital",
+        "city": "Albany",
+        "drive_min": 18,
+        "wait_min": 13,
+        "score": 31,
+        "estimated_total_min": 31,
+        "outcome_index": 1.0,
+        "condition": "trauma",
+        "staff_on": 7,
+        "compatible": [],
+        "warnings": []
+      },
+      {
+        "hospital_id": "ell",
+        "name": "Ellis Hospital",
+        "city": "Schenectady",
+        "drive_min": 29,
+        "wait_min": 6,
+        "score": 35,
+        "estimated_total_min": 35,
+        "outcome_index": 1.0,
+        "condition": "trauma",
+        "staff_on": 6,
+        "compatible": [],
+        "warnings": []
+      },
+      {
+        "hospital_id": "amc",
+        "name": "Albany Medical Center Hospital",
+        "city": "Albany",
+        "drive_min": 22,
+        "wait_min": 24,
+        "score": 46,
+        "estimated_total_min": 46,
+        "outcome_index": 1.0,
+        "condition": "trauma",
+        "staff_on": 12,
+        "compatible": [],
+        "warnings": []
+      },
+      {
+        "hospital_id": "sar",
+        "name": "Saratoga Hospital",
+        "city": "Saratoga Springs",
+        "drive_min": 51,
+        "wait_min": 2,
+        "score": 53,
+        "estimated_total_min": 53,
+        "outcome_index": 1.0,
+        "condition": "trauma",
+        "staff_on": 5,
+        "compatible": [],
+        "warnings": []
+      }
+    ]
+  },
+  {
+    "scenario_id": "baseline",
+    "intake": {
+      "symptoms": [
+        "fever"
+      ],
+      "age": 10,
+      "pain": 0,
+      "peds": true,
+      "trauma": false
+    },
+    "level": 4,
+    "ranking": [
+      {
+        "hospital_id": "sp",
+        "name": "St. Peter's Hospital",
+        "city": "Albany",
+        "drive_min": 18,
+        "wait_min": 21,
+        "score": 39,
+        "estimated_total_min": 39,
+        "outcome_index": 1.0,
+        "condition": "infection",
+        "staff_on": 7,
+        "compatible": [
+          "pediatric care"
+        ],
+        "warnings": []
+      },
+      {
+        "hospital_id": "amc",
+        "name": "Albany Medical Center Hospital",
+        "city": "Albany",
+        "drive_min": 22,
+        "wait_min": 29,
+        "score": 51,
+        "estimated_total_min": 51,
+        "outcome_index": 1.0,
+        "condition": "infection",
+        "staff_on": 12,
+        "compatible": [
+          "pediatric care"
+        ],
+        "warnings": []
+      },
+      {
+        "hospital_id": "sam",
+        "name": "Samaritan Hospital",
+        "city": "Troy",
+        "drive_min": 6,
+        "wait_min": 18,
+        "score": 64,
+        "estimated_total_min": 24,
+        "outcome_index": 1.0,
+        "condition": "infection",
+        "staff_on": 5,
+        "compatible": [],
+        "warnings": [
+          "no pediatric unit"
+        ]
+      },
+      {
+        "hospital_id": "ell",
+        "name": "Ellis Hospital",
+        "city": "Schenectady",
+        "drive_min": 29,
+        "wait_min": 13,
+        "score": 82,
+        "estimated_total_min": 42,
+        "outcome_index": 1.0,
+        "condition": "infection",
+        "staff_on": 6,
+        "compatible": [],
+        "warnings": [
+          "no pediatric unit"
+        ]
+      },
+      {
+        "hospital_id": "sar",
+        "name": "Saratoga Hospital",
+        "city": "Saratoga Springs",
+        "drive_min": 51,
+        "wait_min": 8,
+        "score": 99,
+        "estimated_total_min": 59,
+        "outcome_index": 1.0,
+        "condition": "infection",
+        "staff_on": 5,
+        "compatible": [],
+        "warnings": [
+          "no pediatric unit"
+        ]
+      }
+    ]
+  },
+  {
+    "scenario_id": "queue_surge",
+    "intake": {
+      "symptoms": [
+        "fracture"
+      ],
+      "age": 25,
+      "pain": 5,
+      "peds": false,
+      "trauma": false
+    },
+    "level": 3,
+    "ranking": [
+      {
+        "hospital_id": "sp",
+        "name": "St. Peter's Hospital",
+        "city": "Albany",
+        "drive_min": 18,
+        "wait_min": 13,
+        "score": 31,
+        "estimated_total_min": 31,
+        "outcome_index": 1.0,
+        "condition": "trauma",
+        "staff_on": 7,
+        "compatible": [],
+        "warnings": []
+      },
+      {
+        "hospital_id": "ell",
+        "name": "Ellis Hospital",
+        "city": "Schenectady",
+        "drive_min": 29,
+        "wait_min": 6,
+        "score": 35,
+        "estimated_total_min": 35,
+        "outcome_index": 1.0,
+        "condition": "trauma",
+        "staff_on": 6,
+        "compatible": [],
+        "warnings": []
+      },
+      {
+        "hospital_id": "amc",
+        "name": "Albany Medical Center Hospital",
+        "city": "Albany",
+        "drive_min": 22,
+        "wait_min": 24,
+        "score": 46,
+        "estimated_total_min": 46,
+        "outcome_index": 1.0,
+        "condition": "trauma",
+        "staff_on": 12,
+        "compatible": [],
+        "warnings": []
+      },
+      {
+        "hospital_id": "sar",
+        "name": "Saratoga Hospital",
+        "city": "Saratoga Springs",
+        "drive_min": 51,
+        "wait_min": 2,
+        "score": 53,
+        "estimated_total_min": 53,
+        "outcome_index": 1.0,
+        "condition": "trauma",
+        "staff_on": 5,
+        "compatible": [],
+        "warnings": []
+      },
+      {
+        "hospital_id": "sam",
+        "name": "Samaritan Hospital",
+        "city": "Troy",
+        "drive_min": 6,
+        "wait_min": 116,
+        "score": 122,
+        "estimated_total_min": 122,
+        "outcome_index": 1.0,
+        "condition": "trauma",
+        "staff_on": 5,
+        "compatible": [],
+        "warnings": []
+      }
+    ]
+  },
+  {
+    "scenario_id": "queue_surge",
+    "intake": {
+      "symptoms": [
+        "fever"
+      ],
+      "age": 10,
+      "pain": 0,
+      "peds": true,
+      "trauma": false
+    },
+    "level": 4,
+    "ranking": [
+      {
+        "hospital_id": "sp",
+        "name": "St. Peter's Hospital",
+        "city": "Albany",
+        "drive_min": 18,
+        "wait_min": 21,
+        "score": 39,
+        "estimated_total_min": 39,
+        "outcome_index": 1.0,
+        "condition": "infection",
+        "staff_on": 7,
+        "compatible": [
+          "pediatric care"
+        ],
+        "warnings": []
+      },
+      {
+        "hospital_id": "amc",
+        "name": "Albany Medical Center Hospital",
+        "city": "Albany",
+        "drive_min": 22,
+        "wait_min": 29,
+        "score": 51,
+        "estimated_total_min": 51,
+        "outcome_index": 1.0,
+        "condition": "infection",
+        "staff_on": 12,
+        "compatible": [
+          "pediatric care"
+        ],
+        "warnings": []
+      },
+      {
+        "hospital_id": "ell",
+        "name": "Ellis Hospital",
+        "city": "Schenectady",
+        "drive_min": 29,
+        "wait_min": 13,
+        "score": 82,
+        "estimated_total_min": 42,
+        "outcome_index": 1.0,
+        "condition": "infection",
+        "staff_on": 6,
+        "compatible": [],
+        "warnings": [
+          "no pediatric unit"
+        ]
+      },
+      {
+        "hospital_id": "sar",
+        "name": "Saratoga Hospital",
+        "city": "Saratoga Springs",
+        "drive_min": 51,
+        "wait_min": 8,
+        "score": 99,
+        "estimated_total_min": 59,
+        "outcome_index": 1.0,
+        "condition": "infection",
+        "staff_on": 5,
+        "compatible": [],
+        "warnings": [
+          "no pediatric unit"
+        ]
+      },
+      {
+        "hospital_id": "sam",
+        "name": "Samaritan Hospital",
+        "city": "Troy",
+        "drive_min": 6,
+        "wait_min": 141,
+        "score": 187,
+        "estimated_total_min": 147,
+        "outcome_index": 1.0,
+        "condition": "infection",
+        "staff_on": 5,
+        "compatible": [],
+        "warnings": [
+          "no pediatric unit"
+        ]
+      }
+    ]
+  },
+  {
+    "scenario_id": "staff_reduction",
+    "intake": {
+      "symptoms": [
+        "fracture"
+      ],
+      "age": 25,
+      "pain": 5,
+      "peds": false,
+      "trauma": false
+    },
+    "level": 3,
+    "ranking": [
+      {
+        "hospital_id": "sp",
+        "name": "St. Peter's Hospital",
+        "city": "Albany",
+        "drive_min": 18,
+        "wait_min": 13,
+        "score": 31,
+        "estimated_total_min": 31,
+        "outcome_index": 1.0,
+        "condition": "trauma",
+        "staff_on": 7,
+        "compatible": [],
+        "warnings": []
+      },
+      {
+        "hospital_id": "ell",
+        "name": "Ellis Hospital",
+        "city": "Schenectady",
+        "drive_min": 29,
+        "wait_min": 6,
+        "score": 35,
+        "estimated_total_min": 35,
+        "outcome_index": 1.0,
+        "condition": "trauma",
+        "staff_on": 6,
+        "compatible": [],
+        "warnings": []
+      },
+      {
+        "hospital_id": "amc",
+        "name": "Albany Medical Center Hospital",
+        "city": "Albany",
+        "drive_min": 22,
+        "wait_min": 24,
+        "score": 46,
+        "estimated_total_min": 46,
+        "outcome_index": 1.0,
+        "condition": "trauma",
+        "staff_on": 12,
+        "compatible": [],
+        "warnings": []
+      },
+      {
+        "hospital_id": "sar",
+        "name": "Saratoga Hospital",
+        "city": "Saratoga Springs",
+        "drive_min": 51,
+        "wait_min": 2,
+        "score": 53,
+        "estimated_total_min": 53,
+        "outcome_index": 1.0,
+        "condition": "trauma",
+        "staff_on": 5,
+        "compatible": [],
+        "warnings": []
+      },
+      {
+        "hospital_id": "sam",
+        "name": "Samaritan Hospital",
+        "city": "Troy",
+        "drive_min": 6,
+        "wait_min": 54,
+        "score": 60,
+        "estimated_total_min": 60,
+        "outcome_index": 1.0,
+        "condition": "trauma",
+        "staff_on": 1,
+        "compatible": [],
+        "warnings": []
+      }
+    ]
+  },
+  {
+    "scenario_id": "staff_reduction",
+    "intake": {
+      "symptoms": [
+        "fever"
+      ],
+      "age": 10,
+      "pain": 0,
+      "peds": true,
+      "trauma": false
+    },
+    "level": 4,
+    "ranking": [
+      {
+        "hospital_id": "sp",
+        "name": "St. Peter's Hospital",
+        "city": "Albany",
+        "drive_min": 18,
+        "wait_min": 21,
+        "score": 39,
+        "estimated_total_min": 39,
+        "outcome_index": 1.0,
+        "condition": "infection",
+        "staff_on": 7,
+        "compatible": [
+          "pediatric care"
+        ],
+        "warnings": []
+      },
+      {
+        "hospital_id": "amc",
+        "name": "Albany Medical Center Hospital",
+        "city": "Albany",
+        "drive_min": 22,
+        "wait_min": 29,
+        "score": 51,
+        "estimated_total_min": 51,
+        "outcome_index": 1.0,
+        "condition": "infection",
+        "staff_on": 12,
+        "compatible": [
+          "pediatric care"
+        ],
+        "warnings": []
+      },
+      {
+        "hospital_id": "ell",
+        "name": "Ellis Hospital",
+        "city": "Schenectady",
+        "drive_min": 29,
+        "wait_min": 13,
+        "score": 82,
+        "estimated_total_min": 42,
+        "outcome_index": 1.0,
+        "condition": "infection",
+        "staff_on": 6,
+        "compatible": [],
+        "warnings": [
+          "no pediatric unit"
+        ]
+      },
+      {
+        "hospital_id": "sar",
+        "name": "Saratoga Hospital",
+        "city": "Saratoga Springs",
+        "drive_min": 51,
+        "wait_min": 8,
+        "score": 99,
+        "estimated_total_min": 59,
+        "outcome_index": 1.0,
+        "condition": "infection",
+        "staff_on": 5,
+        "compatible": [],
+        "warnings": [
+          "no pediatric unit"
+        ]
+      },
+      {
+        "hospital_id": "sam",
+        "name": "Samaritan Hospital",
+        "city": "Troy",
+        "drive_min": 6,
+        "wait_min": 70,
+        "score": 116,
+        "estimated_total_min": 76,
+        "outcome_index": 1.0,
+        "condition": "infection",
+        "staff_on": 1,
+        "compatible": [],
+        "warnings": [
+          "no pediatric unit"
+        ]
+      }
+    ]
+  },
+  {
+    "scenario_id": "capability_change",
+    "intake": {
+      "symptoms": [
+        "fracture"
+      ],
+      "age": 25,
+      "pain": 5,
+      "peds": false,
+      "trauma": false
+    },
+    "level": 3,
+    "ranking": [
+      {
+        "hospital_id": "sam",
+        "name": "Samaritan Hospital",
+        "city": "Troy",
+        "drive_min": 6,
+        "wait_min": 12,
+        "score": 18,
+        "estimated_total_min": 18,
+        "outcome_index": 1.0,
+        "condition": "trauma",
+        "staff_on": 5,
+        "compatible": [],
+        "warnings": []
+      },
+      {
+        "hospital_id": "sp",
+        "name": "St. Peter's Hospital",
+        "city": "Albany",
+        "drive_min": 18,
+        "wait_min": 13,
+        "score": 31,
+        "estimated_total_min": 31,
+        "outcome_index": 1.0,
+        "condition": "trauma",
+        "staff_on": 7,
+        "compatible": [],
+        "warnings": []
+      },
+      {
+        "hospital_id": "ell",
+        "name": "Ellis Hospital",
+        "city": "Schenectady",
+        "drive_min": 29,
+        "wait_min": 6,
+        "score": 35,
+        "estimated_total_min": 35,
+        "outcome_index": 1.0,
+        "condition": "trauma",
+        "staff_on": 6,
+        "compatible": [],
+        "warnings": []
+      },
+      {
+        "hospital_id": "amc",
+        "name": "Albany Medical Center Hospital",
+        "city": "Albany",
+        "drive_min": 22,
+        "wait_min": 24,
+        "score": 46,
+        "estimated_total_min": 46,
+        "outcome_index": 1.0,
+        "condition": "trauma",
+        "staff_on": 12,
+        "compatible": [],
+        "warnings": []
+      },
+      {
+        "hospital_id": "sar",
+        "name": "Saratoga Hospital",
+        "city": "Saratoga Springs",
+        "drive_min": 51,
+        "wait_min": 2,
+        "score": 53,
+        "estimated_total_min": 53,
+        "outcome_index": 1.0,
+        "condition": "trauma",
+        "staff_on": 5,
+        "compatible": [],
+        "warnings": []
+      }
+    ]
+  },
+  {
+    "scenario_id": "capability_change",
+    "intake": {
+      "symptoms": [
+        "fever"
+      ],
+      "age": 10,
+      "pain": 0,
+      "peds": true,
+      "trauma": false
+    },
+    "level": 4,
+    "ranking": [
+      {
+        "hospital_id": "amc",
+        "name": "Albany Medical Center Hospital",
+        "city": "Albany",
+        "drive_min": 22,
+        "wait_min": 29,
+        "score": 51,
+        "estimated_total_min": 51,
+        "outcome_index": 1.0,
+        "condition": "infection",
+        "staff_on": 12,
+        "compatible": [
+          "pediatric care"
+        ],
+        "warnings": []
+      },
+      {
+        "hospital_id": "sam",
+        "name": "Samaritan Hospital",
+        "city": "Troy",
+        "drive_min": 6,
+        "wait_min": 18,
+        "score": 64,
+        "estimated_total_min": 24,
+        "outcome_index": 1.0,
+        "condition": "infection",
+        "staff_on": 5,
+        "compatible": [],
+        "warnings": [
+          "no pediatric unit"
+        ]
+      },
+      {
+        "hospital_id": "sp",
+        "name": "St. Peter's Hospital",
+        "city": "Albany",
+        "drive_min": 18,
+        "wait_min": 21,
+        "score": 79,
+        "estimated_total_min": 39,
+        "outcome_index": 1.0,
+        "condition": "infection",
+        "staff_on": 7,
+        "compatible": [],
+        "warnings": [
+          "no pediatric unit"
+        ]
+      },
+      {
+        "hospital_id": "ell",
+        "name": "Ellis Hospital",
+        "city": "Schenectady",
+        "drive_min": 29,
+        "wait_min": 13,
+        "score": 82,
+        "estimated_total_min": 42,
+        "outcome_index": 1.0,
+        "condition": "infection",
+        "staff_on": 6,
+        "compatible": [],
+        "warnings": [
+          "no pediatric unit"
+        ]
+      },
+      {
+        "hospital_id": "sar",
+        "name": "Saratoga Hospital",
+        "city": "Saratoga Springs",
+        "drive_min": 51,
+        "wait_min": 8,
+        "score": 99,
+        "estimated_total_min": 59,
+        "outcome_index": 1.0,
+        "condition": "infection",
+        "staff_on": 5,
+        "compatible": [],
+        "warnings": [
+          "no pediatric unit"
+        ]
+      }
+    ]
+  }
+]
