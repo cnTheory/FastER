@@ -157,3 +157,38 @@ Verified locally: eight API/logic tests covering queue aggregation, staffing-dri
 - Databricks Auto Loader: https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/
 - Gemini API: https://ai.google.dev/gemini-api/docs
 - Fish Audio: https://docs.fish.audio/developer-guide/getting-started/quickstart
+
+## ER recommendation with surge scenarios (`/triage`)
+
+Open http://localhost:8000/triage. Flow: injury text -> Gemini assigns urgency 1-5 -> backend scores every hospital
+-> Gemini picks among eligible hospitals and writes the run-down -> backend validates the pick.
+
+* **SPARCS reference data** (`app/reference/hospital_reference.csv`, built by `python scripts/build_reference.py path/to/sparcs24.csv.xz`)
+  gives per-hospital context: trauma admissions (trauma-capability proxy), pediatric share, severe-case share, and
+  mean inpatient length of stay (boarding-pressure proxy). **SPARCS has no triage or ED wait times**, so wait
+  estimates come from an assumed service time per urgency level (`SERVICE_MINUTES` in `app/triage.py`).
+* **Priority ordering**: a patient only waits behind patients of equal or higher urgency.
+* **Synthetic live data** (`app/scenarios.py`): `normal` and `highway_accident` (surge at Albany Medical Center).
+  Switch scenarios on the page or with `POST /api/scenario/{name}`.
+* **Gemini** needs `GEMINI_API_KEY` in `.env`. Without it (or if Gemini errors) the backend falls back to the
+  algorithm's best hospital and says so in `decision_source`. Unknown urgency defaults to level 2, never to minor.
+* With `DATA_MODE=databricks` the reference stats are queried from the Databricks SPARCS view instead of the CSV
+  (`reference_source` in the response says which was used).
+
+### Live queue data from Databricks
+
+With `DATA_MODE=databricks` the backend reads the queue/staffing numbers for the selected scenario from
+`DATABRICKS_STATUS_TABLE` (default `workspace.faster.gold_hospital_status_by_scenario`) instead of `app/scenarios.py`.
+
+1. Import `databricks_scenarios.py` into Databricks as a notebook and run it (set the catalog widget if needed).
+   It writes 50 rows: 2 scenarios x 5 hospitals x 5 urgency levels.
+2. Set `DATA_MODE=databricks`, `DATABRICKS_HOST`, `DATABRICKS_TOKEN`, `DATABRICKS_WAREHOUSE_ID` in `.env`, then
+   `docker compose up --build --force-recreate`.
+3. Edit rows with SQL (example in the notebook's last cell) to change a surge, no code changes needed.
+4. If you edit `app/scenarios.py`, regenerate the notebook with `python scripts/export_scenarios_notebook.py`.
+
+Table contract: `scenario STRING, hospital_id STRING, acuity INT, waiting_count BIGINT, active_clinicians BIGINT,
+travel_minutes DOUBLE, surge BOOLEAN, observed_at STRING`. A scenario must have all 5 hospitals and all 5 acuity
+rows each; otherwise it is rejected. If the query fails, the backend falls back to the built-in scenarios and the
+response's `status_source` (shown on the `/triage` page) says so. Scenario names must exist in `scenarios.py`
+(it supplies the titles). `observed_at` is stored but not checked for staleness in this demo.
