@@ -1,0 +1,13 @@
+arrival_id,hospital_id,lvl,eta_min,status,scenario_id,is_synthetic,observed_at
+baseline_arrival_1,sam,3,10,en_route,baseline,True,2026-11-08T13:00:00Z
+baseline_arrival_2,sp,4,20,en_route,baseline,True,2026-11-08T13:00:00Z
+baseline_arrival_3,amc,2,5,en_route,baseline,True,2026-11-08T13:00:00Z
+queue_surge_arrival_1,sam,3,10,en_route,queue_surge,True,2026-11-08T13:00:00Z
+queue_surge_arrival_2,sp,4,20,en_route,queue_surge,True,2026-11-08T13:00:00Z
+queue_surge_arrival_3,amc,2,5,en_route,queue_surge,True,2026-11-08T13:00:00Z
+staff_reduction_arrival_1,sam,3,10,en_route,staff_reduction,True,2026-11-08T13:00:00Z
+staff_reduction_arrival_2,sp,4,20,en_route,staff_reduction,True,2026-11-08T13:00:00Z
+staff_reduction_arrival_3,amc,2,5,en_route,staff_reduction,True,2026-11-08T13:00:00Z
+capability_change_arrival_1,sam,3,10,en_route,capability_change,True,2026-11-08T13:00:00Z
+capability_change_arrival_2,sp,4,20,en_route,capability_change,True,2026-11-08T13:00:00Z
+capability_change_arrival_3,amc,2,5,en_route,capability_change,True,2026-11-08T13:00:00Z
