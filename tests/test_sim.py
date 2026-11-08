@@ -3,10 +3,10 @@
 import unittest
 from datetime import datetime, timedelta
 
-from src.faster.sim.distributions import ClinicalDistributions
-from src.faster.sim.engine import ERSimulation
-from src.faster.sim.network import HospitalNetworkSimulation
-from src.faster.sim.models import (
+from scripts.sim.distributions import ClinicalDistributions
+from scripts.sim.engine import ERSimulation
+from scripts.sim.network import HospitalNetworkSimulation
+from scripts.sim.models import (
     BedStatus,
     ESILevel,
     EventType,
@@ -16,8 +16,8 @@ from src.faster.sim.models import (
     StaffRole,
     VitalSigns,
 )
-from src.faster.sim.prediction import WaitTimePredictor
-from src.faster.sim.priorities import (
+from scripts.sim.prediction import WaitTimePredictor
+from scripts.sim.priorities import (
     DynamicClinicalPriorityStrategy,
     FastTrackPriorityStrategy,
     StrictESIPriorityStrategy,
