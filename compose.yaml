@@ -1,0 +1,11 @@
+services:
+  faster:
+    build: .
+    image: faster-demo:local
+    ports:
+      - "127.0.0.1:8000:8000"
+    # .env is optional: demo mode runs without it.
+    env_file:
+      - path: .env
+        required: false
+    restart: unless-stopped
