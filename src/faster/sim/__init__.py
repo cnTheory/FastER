@@ -14,16 +14,19 @@ from .models import (
     ERBed,
     ESILevel,
     EventType,
+    HospitalRoutingRecommendation,
     HospitalStateSnapshot,
     Patient,
     PatientStatus,
     QueueItem,
+    RegionalNetworkSnapshot,
     SimulationEvent,
     StaffMember,
     StaffRole,
     VitalSigns,
     WaitTimeEstimate,
 )
+from .network import HospitalNetworkSimulation
 from .prediction import WaitTimePredictor
 from .priorities import (
     BasePriorityStrategy,
@@ -49,6 +52,9 @@ __all__ = [
     "QueueItem",
     "WaitTimeEstimate",
     "HospitalStateSnapshot",
+    "HospitalRoutingRecommendation",
+    "RegionalNetworkSnapshot",
+    "HospitalNetworkSimulation",
     "BasePriorityStrategy",
     "StrictESIPriorityStrategy",
     "DynamicClinicalPriorityStrategy",

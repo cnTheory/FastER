@@ -48,7 +48,12 @@ class ClinicalDistributions:
             p *= self.rng.random()
         return k - 1
 
-    def sample_patient_profile(self, arrival_time: datetime, patient_index: int) -> Patient:
+    def sample_patient_profile(
+        self,
+        arrival_time: datetime,
+        patient_index: int,
+        hospital_prefix: str | None = None,
+    ) -> Patient:
         """Generates a clinically realistic patient profile."""
         # 18% arrive via EMS ambulance; 82% walk in
         is_ems = self.rng.random() < 0.18
@@ -79,8 +84,9 @@ class ClinicalDistributions:
         adm_prob = self._calculate_admission_probability(esi, age, vitals)
         will_admit = self.rng.random() < adm_prob
 
+        prefix = f"{hospital_prefix}-" if hospital_prefix else ""
         return Patient(
-            id=f"PAT-{arrival_time.strftime('%H%M')}-{patient_index:04d}",
+            id=f"{prefix}PAT-{arrival_time.strftime('%H%M')}-{patient_index:04d}",
             arrival_time=arrival_time,
             arrival_mode=arrival_mode,
             age=age,

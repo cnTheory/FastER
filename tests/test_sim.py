@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 
 from src.faster.sim.distributions import ClinicalDistributions
 from src.faster.sim.engine import ERSimulation
+from src.faster.sim.network import HospitalNetworkSimulation
 from src.faster.sim.models import (
     BedStatus,
     ESILevel,
@@ -191,6 +192,90 @@ class TestERSimulationEngine(unittest.TestCase):
         snapshot = sim.get_snapshot()
         # Should have captured some boarders or bed pressure
         self.assertEqual(snapshot.inpatient_beds_available, 0)
+
+
+class TestHospitalNetworkSimulation(unittest.TestCase):
+    def setUp(self):
+        self.t0 = datetime(2026, 11, 8, 9, 0, 0)
+        self.h1 = ERSimulation(
+            hospital_id="H1-METRO",
+            name="Metro General",
+            er_beds_count=20,
+            inpatient_beds_available=4,
+            base_arrivals_per_hour=5.0,
+            travel_minutes=10.0,
+            start_time=self.t0,
+            seed=101,
+        )
+        self.h2 = ERSimulation(
+            hospital_id="H2-RIVERSIDE",
+            name="Riverside ED",
+            er_beds_count=12,
+            inpatient_beds_available=2,
+            base_arrivals_per_hour=3.0,
+            travel_minutes=6.0,
+            start_time=self.t0,
+            seed=102,
+        )
+        self.network = HospitalNetworkSimulation(
+            hospitals=[self.h1, self.h2],
+            start_time=self.t0,
+        )
+
+    def test_multi_hospital_id_isolation(self):
+        # Generate arrivals in both hospitals
+        for _ in range(30):
+            self.network.step(delta_minutes=2)
+
+        # Ensure all patient IDs are scoped to their respective hospitals
+        h1_patients = [p.id for p in self.h1.patients.values()]
+        h2_patients = [p.id for p in self.h2.patients.values()]
+
+        self.assertTrue(all(pid.startswith("H1-METRO-") for pid in h1_patients))
+        self.assertTrue(all(pid.startswith("H2-RIVERSIDE-") for pid in h2_patients))
+        
+        # Zero collision across sets
+        intersection = set(h1_patients).intersection(set(h2_patients))
+        self.assertEqual(len(intersection), 0)
+
+    def test_network_synchronized_clock(self):
+        self.network.step(delta_minutes=15)
+        expected_time = self.t0 + timedelta(minutes=15)
+        self.assertEqual(self.network.current_time, expected_time)
+        self.assertEqual(self.h1.current_time, expected_time)
+        self.assertEqual(self.h2.current_time, expected_time)
+
+    def test_network_snapshot_aggregation(self):
+        self.network.run_until(self.t0 + timedelta(minutes=60), step_minutes=5)
+        snap = self.network.get_network_snapshot()
+
+        self.assertEqual(len(snap.hospitals), 2)
+        self.assertIn("H1-METRO", snap.hospitals)
+        self.assertIn("H2-RIVERSIDE", snap.hospitals)
+        self.assertEqual(len(snap.routing_recommendations), 2)
+        self.assertGreaterEqual(snap.total_regional_waiting, 0)
+        self.assertIsNotNone(snap.best_hospital_id)
+
+    def test_inter_hospital_ambulance_diversion(self):
+        diverted_events = []
+        self.network.subscribe(
+            lambda e: diverted_events.append(e),
+            event_types={EventType.PATIENT_DIVERTED},
+        )
+
+        # Force H1 on ambulance diversion
+        self.h1.set_diversion(True)
+        self.h2.set_diversion(False)
+
+        # Inject an EMS ambulance surge into H1
+        self.h1.inject_surge(patient_count=2, acuity=ESILevel.EMERGENT)
+        self.network.step(delta_minutes=1)
+
+        # H1 should have diverted at least one patient to H2
+        self.assertGreater(len(diverted_events), 0)
+        first_event = diverted_events[0]
+        self.assertEqual(first_event.data["origin_hospital_id"], "H1-METRO")
+        self.assertEqual(first_event.data["destination_hospital_id"], "H2-RIVERSIDE")
 
 
 if __name__ == "__main__":

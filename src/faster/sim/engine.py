@@ -39,6 +39,8 @@ class ERSimulation:
         er_beds_count: int = 24,
         inpatient_beds_available: int = 5,
         base_arrivals_per_hour: float = 4.5,
+        capabilities: Optional[List[str]] = None,
+        travel_minutes: float = 0.0,
         priority_strategy: Optional[BasePriorityStrategy] = None,
         start_time: Optional[datetime] = None,
         seed: Optional[int] = 42,
@@ -48,6 +50,9 @@ class ERSimulation:
         self.er_beds_count = er_beds_count
         self.inpatient_beds_available = inpatient_beds_available
         self.base_arrivals_per_hour = base_arrivals_per_hour
+        self.capabilities = capabilities or ["general", "imaging"]
+        self.travel_minutes = travel_minutes
+        self._manual_diversion: Optional[bool] = None
         
         self.current_time = start_time or datetime(2026, 11, 8, 9, 0, 0)
         self.strategy = priority_strategy or DynamicClinicalPriorityStrategy()
@@ -92,8 +97,9 @@ class ERSimulation:
                 btype = BedType.ACUTE
                 bname = f"Acute Bed {i}"
 
-            self.beds[f"BED-{i:02d}"] = ERBed(
-                id=f"BED-{i:02d}",
+            bed_id = f"{self.hospital_id}-BED-{i:02d}"
+            self.beds[bed_id] = ERBed(
+                id=bed_id,
                 name=bname,
                 bed_type=btype,
                 status=BedStatus.AVAILABLE,
@@ -101,22 +107,25 @@ class ERSimulation:
 
         # Baseline clinical staffing: 3 Attendings/PAs, 2 Triage Nurses, 6 Bedside Nurses
         for i in range(1, 4):
-            self.staff[f"MD-{i:02d}"] = StaffMember(
-                id=f"MD-{i:02d}",
+            staff_id = f"{self.hospital_id}-MD-{i:02d}"
+            self.staff[staff_id] = StaffMember(
+                id=staff_id,
                 name=f"Dr. Clinician {i}",
                 role=StaffRole.PHYSICIAN,
                 max_concurrent_patients=4,
             )
         for i in range(1, 3):
-            self.staff[f"RN-TRIAGE-{i:02d}"] = StaffMember(
-                id=f"RN-TRIAGE-{i:02d}",
+            staff_id = f"{self.hospital_id}-RN-TRIAGE-{i:02d}"
+            self.staff[staff_id] = StaffMember(
+                id=staff_id,
                 name=f"Triage Nurse {i}",
                 role=StaffRole.TRIAGE_NURSE,
                 max_concurrent_patients=1,
             )
         for i in range(1, 7):
-            self.staff[f"RN-BED-{i:02d}"] = StaffMember(
-                id=f"RN-BED-{i:02d}",
+            staff_id = f"{self.hospital_id}-RN-BED-{i:02d}"
+            self.staff[staff_id] = StaffMember(
+                id=staff_id,
                 name=f"Bedside RN {i}",
                 role=StaffRole.BEDSIDE_NURSE,
                 max_concurrent_patients=3,
@@ -216,7 +225,9 @@ class ERSimulation:
         )
         for _ in range(count):
             self._patient_sequence += 1
-            patient = self.dist.sample_patient_profile(self.current_time, self._patient_sequence)
+            patient = self.dist.sample_patient_profile(
+                self.current_time, self._patient_sequence, hospital_prefix=self.hospital_id
+            )
             self.patients[patient.id] = patient
 
             self._emit(
@@ -532,7 +543,9 @@ class ERSimulation:
         new_ids = []
         for _ in range(patient_count):
             self._patient_sequence += 1
-            p = self.dist.sample_patient_profile(self.current_time, self._patient_sequence)
+            p = self.dist.sample_patient_profile(
+                self.current_time, self._patient_sequence, hospital_prefix=self.hospital_id
+            )
             p.esi = acuity
             p.arrival_mode = "EMS_AMBULANCE"
             p.chief_complaint = "Severe Trauma / Collision Surge"
@@ -550,6 +563,43 @@ class ERSimulation:
             data={"count": patient_count, "acuity": acuity.value, "patient_ids": new_ids},
         )
         return new_ids
+
+    def receive_external_patient(self, patient: Patient) -> None:
+        """Accepts a patient dispatched or diverted from the regional network."""
+        self._patient_sequence += 1
+        self.patients[patient.id] = patient
+        self._emit(
+            EventType.PATIENT_ARRIVED,
+            patient_id=patient.id,
+            data={
+                "esi": patient.esi.value,
+                "chief_complaint": patient.chief_complaint,
+                "arrival_mode": patient.arrival_mode,
+                "age": patient.age,
+                "vitals_abnormal": patient.vitals.is_abnormal,
+                "diverted_transfer": True,
+            },
+        )
+        if patient.esi == ESILevel.RESUSCITATION:
+            patient.status = PatientStatus.WAITING_ROOM
+            patient.triage_end_time = self.current_time
+        else:
+            patient.status = PatientStatus.TRIAGE_WAIT
+
+    @property
+    def is_on_diversion(self) -> bool:
+        """Indicates if the emergency department is turning away ambulances."""
+        if self._manual_diversion is not None:
+            return self._manual_diversion
+        occupied = sum(1 for b in self.beds.values() if b.status == BedStatus.OCCUPIED)
+        available = max(0, self.er_beds_count - occupied)
+        boarders = sum(1 for p in self.patients.values() if p.status == PatientStatus.BOARDING)
+        # Clinical diversion criteria: no acute beds and substantial boarding backlog
+        return available <= 1 and boarders >= 3
+
+    def set_diversion(self, diverting: Optional[bool]) -> None:
+        """Manually overrides ambulance diversion status (None to resume automatic calculation)."""
+        self._manual_diversion = diverting
 
     def set_physician_count(self, active_count: int) -> None:
         """Simulates a doctor call-out, shift change, or surge relief staffing."""
@@ -664,4 +714,7 @@ class ERSimulation:
             overcrowding_level=crowding_lvl,
             waiting_queue=queue_items,
             predicted_wait_times=predicted_waits,
+            travel_minutes=self.travel_minutes,
+            capabilities=list(self.capabilities),
+            is_on_diversion=self.is_on_diversion,
         )

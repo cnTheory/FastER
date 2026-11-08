@@ -189,6 +189,7 @@ class EventType(str, Enum):
     STAFF_SHIFT_CHANGE = "STAFF_SHIFT_CHANGE"
     SURGE_TRIGGERED = "SURGE_TRIGGERED"
     INPATIENT_CAPACITY_CHANGE = "INPATIENT_CAPACITY_CHANGE"
+    PATIENT_DIVERTED = "PATIENT_DIVERTED"
 
 
 class SimulationEvent(BaseModel):
@@ -258,3 +259,36 @@ class HospitalStateSnapshot(BaseModel):
     
     # Dynamic wait time predictions
     predicted_wait_times: Dict[int, WaitTimeEstimate]
+    
+    # Regional network attributes
+    travel_minutes: float = 0.0
+    capabilities: List[str] = Field(default_factory=lambda: ["general"])
+    is_on_diversion: bool = False
+
+
+class HospitalRoutingRecommendation(BaseModel):
+    """Regional routing metric comparing candidate hospital destinations for EMS or walk-in triage."""
+    hospital_id: str
+    name: str
+    travel_minutes: float
+    estimated_wait_minutes: float
+    total_minutes: float
+    bed_utilization_pct: float
+    active_boarders_in_er: int
+    is_on_diversion: bool
+    nedocs_score: float
+    overcrowding_level: str
+    capabilities: List[str] = Field(default_factory=list)
+
+
+class RegionalNetworkSnapshot(BaseModel):
+    """Aggregated real-time telemetry snapshot of an entire multi-hospital healthcare network."""
+    timestamp: datetime
+    hospitals: Dict[str, HospitalStateSnapshot]
+    routing_recommendations: List[HospitalRoutingRecommendation]
+    best_hospital_id: Optional[str] = None
+    total_regional_waiting: int
+    total_regional_boarders: int
+    total_regional_in_treatment: int
+    hospitals_on_diversion: List[str] = Field(default_factory=list)
+
